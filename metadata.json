@@ -1,7 +1,10 @@
 {
   "name": " Kapi-Studio By Piotr new",
   "description": "Zaawansowany profesjonalny edytor wideo SaaS w stylu Linear/Raycast z akceleracją GPU WebCodecs 4K, integracją z Google Drive i chmurą Firestore.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]

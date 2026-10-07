@@ -21,6 +21,7 @@ interface VoiceRecorderModalProps {
   onSaveVoiceover: (audioBlob: Blob, audioUrl: string, durationSeconds: number, options?: VoiceoverSaveOptions) => void;
   defaultText?: string;
   currentTime?: number;
+  initialTab?: 'mic' | 'upload';
 }
 
 export function VoiceRecorderModal({
@@ -28,8 +29,9 @@ export function VoiceRecorderModal({
   onClose,
   onSaveVoiceover,
   currentTime = 0,
+  initialTab = 'mic',
 }: VoiceRecorderModalProps) {
-  const [activeTab, setActiveTab] = useState<'mic' | 'upload'>('upload');
+  const [activeTab, setActiveTab] = useState<'mic' | 'upload'>(initialTab);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
@@ -38,6 +40,14 @@ export function VoiceRecorderModal({
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [recordDuration, setRecordDuration] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Sync activeTab if initialTab changes or modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+      setErrorMessage(null);
+    }
+  }, [isOpen, initialTab]);
   const [audioLevel, setAudioLevel] = useState(0);
   const [isDecodingAudio, setIsDecodingAudio] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -94,17 +104,31 @@ export function VoiceRecorderModal({
     setSourceEnd(0);
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        throw new Error('Twoja przeglądarka lub środowisko nie obsługuje nagrywania dźwięku (brak interfejsu navigator.mediaDevices). Upewnij się, że strona otwarta jest w bezpiecznym kontekście HTTPS.');
+      }
+
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+      } catch (errConstraint: any) {
+        // Fallback for devices (e.g. Poco F6 or external USB interfaces) that reject complex constraints
+        console.warn('[VoiceRecorder] Constrained getUserMedia failed, retrying with basic audio constraints:', errConstraint);
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
 
       // Audio meter analyzer
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       const audioCtx = new AudioCtx();
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
       audioContextRef.current = audioCtx;
       const source = audioCtx.createMediaStreamSource(stream);
       const analyser = audioCtx.createAnalyser();
@@ -126,14 +150,31 @@ export function VoiceRecorderModal({
       };
       updateMeter();
 
-      // Media recorder
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
-        ? 'audio/ogg;codecs=opus'
-        : 'audio/mp4';
+      // Safe MediaRecorder initialization with candidate MIME types
+      const candidateMimes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/mp4',
+        'audio/aac'
+      ];
+      let selectedMime = '';
+      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported) {
+        for (const candidate of candidateMimes) {
+          if (MediaRecorder.isTypeSupported(candidate)) {
+            selectedMime = candidate;
+            break;
+          }
+        }
+      }
 
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      let mediaRecorder: MediaRecorder;
+      try {
+        mediaRecorder = selectedMime ? new MediaRecorder(stream, { mimeType: selectedMime }) : new MediaRecorder(stream);
+      } catch (errRecorder) {
+        console.warn('[VoiceRecorder] Fallback to default MediaRecorder without options:', errRecorder);
+        mediaRecorder = new MediaRecorder(stream);
+      }
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
@@ -143,7 +184,8 @@ export function VoiceRecorderModal({
       };
 
       mediaRecorder.onstop = () => {
-        const fullBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        const finalMime = mediaRecorder.mimeType || selectedMime || 'audio/webm';
+        const fullBlob = new Blob(audioChunksRef.current, { type: finalMime });
         const url = URL.createObjectURL(fullBlob);
         setRecordedBlob(fullBlob);
         setRecordedUrl(url);
@@ -164,11 +206,22 @@ export function VoiceRecorderModal({
         setRecordDuration(dur);
         setSourceEnd(dur);
       }, 250);
-    } catch (err: unknown) {
-      console.log('Brak dostępu do mikrofonu (odmowa lub brak urządzenia).');
-      setErrorMessage(
-        'Brak dostępu do mikrofonu. Upewnij się, że zezwoliłeś przeglądarce na nagrywanie dźwięku.'
-      );
+    } catch (err: any) {
+      console.error('[VoiceRecorder] Microphone access error:', err);
+      let userMsg = 'Brak dostępu do mikrofonu.';
+      if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+        userMsg = 'Przeglądarka zablokowała dostęp do mikrofonu. Kliknij ikonę kłódki/ustawień przy pasku adresu i zezwól na uprawnienie "Mikrofon".';
+      } else if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
+        userMsg = 'Nie wykryto żadnego mikrofonu w Twoim urządzeniu. Podłącz mikrofon lub słuchawki i spróbuj ponownie.';
+      } else if (err?.name === 'NotReadableError' || err?.name === 'TrackStartError') {
+        userMsg = 'Mikrofon jest obecnie zajęty przez inną aplikację (np. Zoom, Teams, Discord). Zamknij inne programy.';
+      } else if (err?.name === 'SecurityError') {
+        userMsg = 'Dostęp do mikrofonu został zablokowany ze względów bezpieczeństwa (wymagane bezpieczne połączenie HTTPS).';
+      } else if (err?.message) {
+        userMsg = `Błąd mikrofonu: ${err.message}`;
+      }
+      setErrorMessage(userMsg);
+      toast.showError(userMsg);
     }
   };
 

@@ -103,7 +103,7 @@ export function AutoCaptionsModal({
         },
         (err) => {
           setIsListening(false);
-          toast.showError('Błąd rozpoznawania mowy: ' + (err?.message || 'Mikrofon zablokowany'));
+          toast.showError(err?.message || 'Brak uprawnień do mikrofonu lub błąd rozpoznawania.');
         }
       );
       setIsListening(true);

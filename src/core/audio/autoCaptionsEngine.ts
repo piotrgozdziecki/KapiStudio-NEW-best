@@ -280,7 +280,21 @@ export class SpeechTranscriptionEngine {
 
     this.recognition.onerror = (e: any) => {
       console.warn('[SpeechTranscriptionEngine] Recognition error:', e);
-      onError?.(e);
+      if (e?.error === 'no-speech') {
+        // Benign pause in speech, do not treat as fatal error
+        return;
+      }
+      let errorMsg = 'Błąd rozpoznawania mowy.';
+      if (e?.error === 'not-allowed') {
+        errorMsg = 'Brak uprawnień do mikrofonu. Kliknij ikonę kłódki przy pasku adresu i zezwól na uprawnienie "Mikrofon".';
+      } else if (e?.error === 'audio-capture') {
+        errorMsg = 'Nie wykryto sprawnego mikrofonu w Twoim urządzeniu.';
+      } else if (e?.error === 'network') {
+        errorMsg = 'Błąd sieciowy z usługą Google Speech API. Sprawdź połączenie z internetem.';
+      } else if (e?.message) {
+        errorMsg = e.message;
+      }
+      onError?.({ ...e, message: errorMsg });
     };
 
     try {
