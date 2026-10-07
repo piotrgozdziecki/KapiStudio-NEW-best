@@ -1,0 +1,43 @@
+{
+  "name": "Kapi-Studio • Profesjonalny Edytor Wideo AI",
+  "short_name": "Kapi-Studio",
+  "description": "Profesjonalny edytor i studio postprodukcji wideo nowej generacji z akceleracją GPU 4K i integracją z Google Drive.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nowy Projekt",
+      "url": "/?action=new",
+      "description": "Otwórz nowy projekt montażu wideo"
+    },
+    {
+      "name": "Dysk Google",
+      "url": "/?tab=drive",
+      "description": "Importuj klipy z Dysku Google"
+    }
+  ]
+}

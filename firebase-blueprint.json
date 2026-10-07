@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Profil użytkownika Kapi-Studio",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "lastActiveAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uid", "updatedAt"]
+    },
+    "Project": {
+      "title": "Video Project",
+      "description": "Stan projektu wideo i timeline",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 256 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "state": { "type": "object" },
+        "totalClips": { "type": "number" },
+        "timelineItemsCount": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "state", "updatedAt"]
+    },
+    "Asset": {
+      "title": "Media Asset",
+      "description": "Pojedynczy plik wideo, audio lub grafika",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "projectId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 256 },
+        "type": { "type": "string" },
+        "duration": { "type": "number" },
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "size": { "type": "number" },
+        "mimeType": { "type": "string" },
+        "driveFileId": { "type": "string" },
+        "category": { "type": "string" },
+        "isFavorite": { "type": "boolean" },
+        "tags": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "projectId", "userId", "name", "type"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Profil użytkownika"
+    },
+    "/users/{userId}/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Zapisane projekty wideo użytkownika"
+    },
+    "/users/{userId}/projects/{projectId}/assets/{assetId}": {
+      "schema": { "$ref": "#/entities/Asset" },
+      "description": "Pliki i zasoby powiązane z projektem"
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Kolekcja główna projektów"
+    },
+    "/assets/{assetId}": {
+      "schema": { "$ref": "#/entities/Asset" },
+      "description": "Kolekcja główna zasobów multimedialnych"
+    }
+  }
+}

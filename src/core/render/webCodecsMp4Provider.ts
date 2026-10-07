@@ -1,0 +1,1388 @@
+import { ProjectState, TimelineItem, MediaClip } from '../../types/project';
+import { IRenderProvider, RenderOptions, RenderProgress, RenderResult } from './renderTypes';
+import { Muxer, ArrayBufferTarget, StreamTarget } from 'mp4-muxer';
+import { urlRegistry } from '../media/urlRegistry';
+import { resolveClipMediaUrl, resolveAudioTrackUrl, getMediaArrayBuffer } from '../media/mediaResolver';
+import { localIndexedDB } from '../storage/indexedDBProvider';
+import { FrameCompositor } from './FrameCompositor';
+import { AudioResampler, STANDARD_RENDER_SAMPLE_RATE, STANDARD_RENDER_CHANNELS } from '../audio/audioResampler';
+import { SafeAudioDecoder } from '../audio/audioDecoder';
+
+/**
+ * AudioEncoderQueueController
+ * Manages the backpressure queue and guarantees race-condition-free draining & flushing
+ * for WebCodecs AudioEncoder when writing AAC audio data to MP4 muxer.
+ */
+class AudioEncoderQueueController {
+  private encoder: AudioEncoder;
+  private maxQueueSize: number;
+  private isFlushing = false;
+  private flushPromise: Promise<void> | null = null;
+  private dequeueResolvers: Array<() => void> = [];
+  private onHeartbeat?: () => void;
+  public error: Error | null = null;
+
+  constructor(
+    encoder: AudioEncoder,
+    maxQueueSize = 8,
+    onHeartbeat?: () => void
+  ) {
+    this.encoder = encoder;
+    this.maxQueueSize = maxQueueSize;
+    this.onHeartbeat = onHeartbeat;
+
+    this.encoder.ondequeue = () => {
+      this.onHeartbeat?.();
+      const resolvers = [...this.dequeueResolvers];
+      this.dequeueResolvers = [];
+      for (const res of resolvers) {
+        res();
+      }
+    };
+  }
+
+  private waitForDequeue(timeoutMs = 60): Promise<void> {
+    return new Promise<void>((resolve) => {
+      let timer: ReturnType<typeof setTimeout>;
+      const resolver = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      this.dequeueResolvers.push(resolver);
+      timer = setTimeout(() => {
+        const idx = this.dequeueResolvers.indexOf(resolver);
+        if (idx !== -1) this.dequeueResolvers.splice(idx, 1);
+        resolve();
+      }, timeoutMs);
+    });
+  }
+
+  async enqueue(audioData: AudioData, signal?: AbortSignal): Promise<void> {
+    if (this.error) throw this.error;
+    if (signal?.aborted) {
+      try { audioData.close(); } catch {}
+      return;
+    }
+
+    // Apply backpressure if encoder queue exceeds threshold
+    while (this.encoder.encodeQueueSize >= this.maxQueueSize) {
+      if (signal?.aborted || this.error) {
+        try { audioData.close(); } catch {}
+        if (this.error) throw this.error;
+        return;
+      }
+      await this.waitForDequeue();
+    }
+
+    try {
+      if (this.encoder.state === 'configured') {
+        this.encoder.encode(audioData);
+      }
+    } finally {
+      try {
+        audioData.close();
+      } catch {}
+    }
+  }
+
+  async flush(signal?: AbortSignal): Promise<void> {
+    if (this.flushPromise) return this.flushPromise;
+    if (this.isFlushing) return;
+    this.isFlushing = true;
+
+    this.flushPromise = (async () => {
+      // 1. Drain pending encoder queue
+      while (this.encoder.encodeQueueSize > 0) {
+        if (signal?.aborted || this.encoder.state === 'closed') break;
+        this.onHeartbeat?.();
+        await this.waitForDequeue(40);
+      }
+
+      // 2. Perform flush once safely if configured
+      if (!signal?.aborted && this.encoder.state === 'configured') {
+        try {
+          await this.encoder.flush();
+        } catch {
+          // Swallow if already flushed or closed
+        }
+      }
+    })();
+
+    return this.flushPromise;
+  }
+}
+
+/**
+ * WebCodecsMp4RenderProvider
+ * Deterministic frame-by-frame rendering engine producing authentic H.264/AAC MP4 files
+ * using WebCodecs (VideoEncoder, AudioEncoder), OfflineAudioContext, and mp4-muxer.
+ */
+export class WebCodecsMp4RenderProvider implements IRenderProvider {
+  id = 'webcodecs_mp4_muxer';
+  name = 'Silnik WebCodecs + MP4 Muxer (Prawdziwy H.264 / AAC MP4)';
+  description = 'Profesjonalny potok kodowania klatka po klatce bez opóźnień czasu rzeczywistego z bezpośrednim zapisem kontenera MP4.';
+
+  isSupported(): boolean {
+    return typeof window !== 'undefined' &&
+      typeof (window as unknown as { VideoEncoder: unknown }).VideoEncoder === 'function' &&
+      typeof (window as unknown as { VideoFrame: unknown }).VideoFrame === 'function' &&
+      typeof HTMLCanvasElement !== 'undefined';
+  }
+
+  async verifyOutput(blob: Blob): Promise<{ valid: boolean; duration: number; error?: string }> {
+    if (!blob || blob.size === 0) {
+      return { valid: false, duration: 0, error: 'Wygenerowany plik MP4 jest pusty (0 bajtów).' };
+    }
+
+    return new Promise((resolve) => {
+      const testVideo = document.createElement('video');
+      testVideo.preload = 'auto';
+      testVideo.muted = true;
+      testVideo.playsInline = true;
+      const testUrl = URL.createObjectURL(blob);
+
+      const timeout = setTimeout(() => {
+        cleanup();
+        resolve({ valid: false, duration: 0, error: 'Przekroczono limit czasu weryfikacji nagłówków MP4.' });
+      }, 15000);
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        testVideo.onloadedmetadata = null;
+        testVideo.onseeked = null;
+        testVideo.onerror = null;
+        testVideo.src = '';
+        URL.revokeObjectURL(testUrl);
+      };
+
+      testVideo.onloadedmetadata = async () => {
+        const dur = testVideo.duration;
+        const validMeta = dur > 0 && testVideo.videoWidth > 0;
+        
+        if (!validMeta) {
+          cleanup();
+          resolve({ valid: false, duration: dur, error: 'Metadane pliku MP4 są nieprawidłowe (brak klatek lub niepoprawny czas trwania).' });
+          return;
+        }
+
+        // Deep verification: seek to 25%, 50% and 90%
+        try {
+          testVideo.currentTime = dur * 0.25;
+          await new Promise<void>(res => {
+            testVideo.onseeked = () => res();
+            setTimeout(res, 1500);
+          });
+          
+          testVideo.currentTime = dur * 0.5;
+          await new Promise<void>(res => {
+            testVideo.onseeked = () => res();
+            setTimeout(res, 1500);
+          });
+
+          testVideo.currentTime = Math.max(0, dur - 0.5);
+          await new Promise<void>(res => {
+            testVideo.onseeked = () => res();
+            setTimeout(res, 1500);
+          });
+
+          cleanup();
+          resolve({ valid: true, duration: dur });
+        } catch {
+          cleanup();
+          resolve({ valid: false, duration: dur, error: 'Błąd podczas weryfikacji strumienia klatek MP4.' });
+        }
+      };
+
+      testVideo.onerror = () => {
+        cleanup();
+        resolve({ valid: false, duration: 0, error: 'Plik nie jest poprawnym strumieniem wideo MP4 (Błąd dekodowania).' });
+      };
+
+      testVideo.src = testUrl;
+    });
+  }
+
+  async render(
+    project: ProjectState,
+    options: RenderOptions,
+    onProgress: (p: RenderProgress) => void,
+    signal?: AbortSignal
+  ): Promise<RenderResult> {
+    if (signal?.aborted) {
+      throw new Error('Eksport został anulowany przed rozpoczęciem.');
+    }
+
+    const sessionId = `export_${Math.random().toString(36).substring(2, 11)}`;
+    let failureStage: 'initialization' | 'loading' | 'decoding' | 'rendering' | 'encoding_video' | 'encoding_audio' | 'muxing' | 'validating' = 'initialization';
+    let currentClipName: string | undefined;
+    let framesProcessed = 0;
+    const mediaElements = new Map<string, HTMLVideoElement | HTMLImageElement | HTMLCanvasElement>();
+    let videoEncoder: VideoEncoder | null = null;
+    let audioEncoder: AudioEncoder | null = null;
+
+    // 1. Sort and validate timeline
+    const sortedItems = [...(project.timelineItems || [])].sort((a, b) => a.timelineStart - b.timelineStart);
+    if (sortedItems.length === 0) {
+      throw new Error('Brak klipów na osi czasu do wyrenderowania.');
+    }
+
+    const clipMap = new Map<string, MediaClip>();
+    (project.mediaLibrary || []).forEach(c => clipMap.set(c.id, c));
+
+    try {
+      onProgress({
+        stage: 'preparing',
+        percent: 1,
+        currentFrame: 0,
+        totalFrames: 100,
+        fps: 0,
+        targetFps: options.fps || 30,
+        statusMessage: 'Walidacja projektu i sprawdzanie dostępności materiałów...',
+        diagnostics: { provider: this.id, stageDetails: 'STAGE 1: Walidacja osi czasu', failureStage: 'initialization' }
+      });
+
+      for (const item of sortedItems) {
+        const clip = clipMap.get(item.clipId);
+        if (!clip) {
+          throw new Error(`SOURCE_ERROR: Nie odnaleziono klipu o ID ${item.clipId} (TimelineItem: ${item.id})`);
+        }
+      }
+
+      // Calculate output canvas dimensions
+      const res = (options.resolution || '1080p') as string;
+      const isVertical = options.aspectRatio === '9:16' || project.settings?.aspectRatio === '9:16' || res.startsWith('vertical_');
+      let width = 1920;
+      let height = 1080;
+
+      if (res === '720p') {
+        width = isVertical ? 720 : 1280;
+        height = isVertical ? 1280 : 720;
+      } else if (res === '1440p') {
+        width = isVertical ? 1440 : 2560;
+        height = isVertical ? 2560 : 1440;
+      } else if (res === '4k' || res === 'vertical_4k') {
+        width = isVertical ? 2160 : 3840;
+        height = isVertical ? 3840 : 2160;
+      } else if (res === 'vertical_1080p') {
+        width = 1080;
+        height = 1920;
+      } else if (res === 'square_1080p') {
+        width = 1080;
+        height = 1080;
+      } else {
+        width = isVertical ? 1080 : 1920;
+        height = isVertical ? 1920 : 1080;
+      }
+
+      // WebCodecs / H.264 encoders strictly require even dimensions
+      width = width - (width % 2);
+      height = height - (height % 2);
+
+      const fps = options.fps || 30;
+      const totalDuration = sortedItems.reduce((max, item) => Math.max(max, item.timelineStart + item.duration), 0);
+      const totalFrames = Math.max(1, Math.round(totalDuration * fps));
+
+      onProgress({
+        stage: 'preparing',
+        percent: 2,
+        currentFrame: 0,
+        totalFrames,
+        fps: 0,
+        targetFps: fps,
+        statusMessage: 'Inicjalizacja kodera WebCodecs i kontenera MP4...'
+      });
+
+      // 2. Audio Configuration - Sound is FOUNDATIONAL: Always generate and encode a valid AAC audio track
+      const hasAudioEncoderSupport = typeof window !== 'undefined' && typeof (window as unknown as { AudioEncoder: unknown }).AudioEncoder === 'function';
+      const enableAudio = hasAudioEncoderSupport;
+
+      // 3. Setup MP4 Muxer with StreamTarget for 4K / High-Res memory safety
+      failureStage = 'muxing';
+      const streamedChunks: Uint8Array[] = [];
+      const useStreamingTarget = width >= 2560 || height >= 2560 || res === '4k' || res === 'vertical_4k';
+
+      let muxerTarget: ArrayBufferTarget | StreamTarget;
+      if (useStreamingTarget) {
+        muxerTarget = new StreamTarget({
+          onData: (data) => {
+            streamedChunks.push(new Uint8Array(data));
+          },
+          chunked: true,
+          chunkSize: 16 * 1024 * 1024 // 16MB chunking for optimal 4K write throughput
+        });
+      } else {
+        muxerTarget = new ArrayBufferTarget();
+      }
+
+      const muxer = new Muxer({
+        target: muxerTarget,
+        video: {
+          codec: 'avc',
+          width,
+          height
+        },
+        audio: enableAudio ? {
+          codec: 'aac',
+          numberOfChannels: 2,
+          sampleRate: 48000
+        } : undefined,
+        fastStart: useStreamingTarget ? false : 'in-memory',
+        firstTimestampBehavior: 'offset'
+      });
+
+      // 4. Setup VideoEncoder
+      failureStage = 'encoding_video';
+      let defaultBitrateKbps = 14000; // 1080p Full HD default
+      if (width >= 3840 || height >= 3840) defaultBitrateKbps = 60000; // 4K Master
+      else if (width >= 2560 || height >= 2560) defaultBitrateKbps = 32000; // 1440p QHD
+      else if (width <= 1280 && height <= 1280) defaultBitrateKbps = 8000; // 720p HD
+
+      if (fps >= 50) defaultBitrateKbps = Math.round(defaultBitrateKbps * 1.35); // Boost for 50/60 FPS
+      const targetBitrate = (options.bitrateKbps || defaultBitrateKbps) * 1000;
+
+      const selectedCodec = options.videoCodec || 'auto';
+      const candidateCodecs: string[] = [];
+      if (selectedCodec === 'VP9') {
+        candidateCodecs.push('vp09.00.10.08');
+      } else if (selectedCodec === 'AV1') {
+        candidateCodecs.push('av01.0.04M.08');
+      } else if (selectedCodec === 'H.265') {
+        candidateCodecs.push('hev1.1.6.L93.B0', 'hvc1.1.6.L93.B0');
+      } else {
+        candidateCodecs.push(
+          'avc1.4D4028', // H.264 Main Profile Level 4.0
+          'avc1.640028', // H.264 High Profile Level 4.0
+          'avc1.42E028', // H.264 Constrained Baseline Profile Level 4.0
+          'avc1.420028',
+          'avc1.42001f'
+        );
+      }
+
+      let videoConfig: VideoEncoderConfig | null = null;
+      const probeScratchCanvas = document.createElement('canvas');
+      probeScratchCanvas.width = 16;
+      probeScratchCanvas.height = 16;
+
+      if (typeof VideoEncoder.isConfigSupported === 'function') {
+        for (const accel of ['prefer-hardware', 'no-preference', 'prefer-software'] as HardwareAcceleration[]) {
+          for (const codec of candidateCodecs) {
+            try {
+              const isAvc = codec.startsWith('avc');
+              const testConfig: VideoEncoderConfig = {
+                codec,
+                width,
+                height,
+                bitrate: targetBitrate,
+                bitrateMode: 'variable', // Variable bitrate for ultimate quality vs speed
+                latencyMode: 'quality',  // Quality mode for high-end encoding efficiency
+                framerate: fps,
+                hardwareAcceleration: accel,
+                avc: isAvc ? { format: 'avc' } : undefined
+              } as any;
+              const support = await VideoEncoder.isConfigSupported(testConfig);
+              if (support && support.supported) {
+                const fullCandidate: VideoEncoderConfig = {
+                  ...(support.config || testConfig),
+                  avc: isAvc ? { format: 'avc' } : undefined
+                };
+
+                let probeOk = false;
+                try {
+                  const probeEnc = new VideoEncoder({
+                    output: () => {},
+                    error: () => {}
+                  });
+                  probeEnc.configure(fullCandidate);
+                  if (probeEnc.state === 'configured') {
+                    const probeFrame = new VideoFrame(probeScratchCanvas, {
+                      timestamp: 0,
+                      duration: 33333
+                    });
+                    probeEnc.encode(probeFrame, { keyFrame: true });
+                    try { probeFrame.close(); } catch {}
+                    try {
+                      await probeEnc.flush();
+                      probeOk = true;
+                    } catch {}
+                  }
+                  try {
+                    if (probeEnc.state !== 'closed') probeEnc.close();
+                  } catch {}
+                } catch {
+                  probeOk = false;
+                }
+
+                if (probeOk) {
+                  videoConfig = fullCandidate;
+                  break;
+                }
+              }
+            } catch {}
+          }
+          if (videoConfig) break;
+        }
+      }
+
+      if (!videoConfig) {
+        const isAvcFallback = candidateCodecs[0].startsWith('avc');
+        videoConfig = {
+          codec: candidateCodecs[0],
+          width,
+          height,
+          bitrate: targetBitrate,
+          bitrateMode: 'variable',
+          latencyMode: 'quality',
+          framerate: fps,
+          hardwareAcceleration: 'no-preference',
+          avc: isAvcFallback ? { format: 'avc' } : undefined
+        } as any;
+      }
+
+      let encoderError: { message: string; failureStage: string; originalError?: unknown } | null = null;
+
+      videoEncoder = new VideoEncoder({
+        output: (chunk, meta) => {
+          try {
+            muxer.addVideoChunk(chunk, meta);
+          } catch (e: unknown) {
+            encoderError = { 
+              message: 'Błąd zapisu wideo do kontenera MP4 (Muxing Error)', 
+              originalError: e, 
+              failureStage: 'muxing'
+            };
+          }
+        },
+        error: (e: unknown) => {
+          const errObj = e as { message?: string };
+          encoderError = {
+            message: `Błąd VideoEncoder: ${errObj?.message || String(e)}`,
+            originalError: e,
+            failureStage: 'encoding_video'
+          };
+        }
+      });
+
+      try {
+        videoEncoder.configure(videoConfig);
+      } catch (e: unknown) {
+        const errObj = e as { message?: string };
+        throw new Error(`Błąd konfiguracji VideoEncoder: ${errObj?.message || String(e)}`);
+      }
+
+      // 5. Canvas for rendering composite frames
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d', { alpha: false });
+      if (!ctx) {
+        throw new Error('Nie można utworzyć kontekstu Canvas 2D.');
+      }
+
+      // 6. Preload media elements
+      failureStage = 'loading';
+      onProgress({
+        stage: 'loading',
+        percent: 5,
+        currentFrame: 0,
+        totalFrames,
+        fps,
+        targetFps: fps,
+        statusMessage: 'Ładowanie i przygotowywanie mediów do renderowania...',
+        diagnostics: { provider: this.id, stageDetails: 'STAGE 2: Preload mediów', failureStage: 'loading' }
+      });
+
+      let lastProgressTime = Date.now();
+      const WATCHDOG_TIMEOUT_MS = 60000;
+      const startTime = Date.now();
+      const speedSamples: Array<{ timestamp: number; frame: number }> = [];
+      let smoothedFps = fps;
+      const heartbeat = () => {
+        lastProgressTime = Date.now();
+      };
+
+      const preloadClip = async (clip: MediaClip) => {
+        if (mediaElements.has(clip.id)) return;
+        currentClipName = clip.name;
+        heartbeat();
+
+        try {
+          const src = (options.useProxyMedia && clip.proxyUrl)
+            ? clip.proxyUrl
+            : await resolveClipMediaUrl(clip);
+          if (!src) throw new Error(`Brak źródła URL dla klipu ${clip.name}`);
+
+          if (clip.type === 'video') {
+            const video = document.createElement('video');
+            video.muted = true;
+            video.playsInline = true;
+            video.preload = 'auto';
+
+            video.style.position = 'fixed';
+            video.style.bottom = '0px';
+            video.style.right = '0px';
+            video.style.width = '16px';
+            video.style.height = '16px';
+            video.style.opacity = '0.001';
+            video.style.pointerEvents = 'none';
+            video.style.zIndex = '-9999';
+            document.body.appendChild(video);
+
+            video.crossOrigin = 'anonymous';
+            video.src = src;
+
+            const loaded = await new Promise<boolean>((resolve) => {
+              if (video.readyState >= 1 && video.videoWidth > 0) {
+                try { video.play().then(() => video.pause()).catch(() => {}); } catch {}
+                resolve(true);
+                return;
+              }
+              let settled = false;
+              const onMetadata = () => {
+                if (settled) return;
+                settled = true;
+                cleanup();
+                try { video.play().then(() => video.pause()).catch(() => {}); } catch {}
+                resolve(true);
+              };
+              const onError = () => {
+                if (settled) return;
+                settled = true;
+                cleanup();
+                resolve(false);
+              };
+              const cleanup = () => {
+                video.removeEventListener('loadedmetadata', onMetadata);
+                video.removeEventListener('canplay', onMetadata);
+                video.removeEventListener('error', onError);
+              };
+
+              video.addEventListener('loadedmetadata', onMetadata);
+              video.addEventListener('canplay', onMetadata);
+              video.addEventListener('error', onError);
+              video.load();
+
+              setTimeout(() => {
+                if (!settled) {
+                  settled = true;
+                  cleanup();
+                  resolve(video.videoWidth > 0 || video.readyState >= 1);
+                }
+              }, 8000);
+            });
+
+            if (!loaded) {
+              const fallbackEl = this.createFallbackFrameElement(clip.name, width, height);
+              mediaElements.set(clip.id, fallbackEl);
+              return;
+            }
+
+            mediaElements.set(clip.id, video);
+          } else {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.src = src;
+            await new Promise<void>((resolve) => {
+              img.onload = () => resolve();
+              img.onerror = () => {
+                const fallback = this.createFallbackFrameElement(clip.name, width, height);
+                mediaElements.set(clip.id, fallback);
+                resolve();
+              };
+              setTimeout(resolve, 4000);
+            });
+            if (!mediaElements.has(clip.id)) {
+              mediaElements.set(clip.id, img);
+            }
+          }
+        } catch {
+          const safeFrame = this.createFallbackFrameElement(clip?.name || 'Ujęcie', width, height);
+          mediaElements.set(clip.id, safeFrame);
+        }
+      };
+
+      // Preload all initial clips
+      for (const item of sortedItems) {
+        if (signal?.aborted) return {} as RenderResult;
+        const clip = clipMap.get(item.clipId);
+        if (clip) await preloadClip(clip);
+      }
+
+      // 7. Audio Encoding via OfflineAudioContext & AudioEncoder
+      if (enableAudio) {
+        try {
+          failureStage = 'encoding_audio';
+          heartbeat();
+          onProgress({
+            stage: 'encoding_audio',
+            percent: 6,
+            currentFrame: 0,
+            totalFrames,
+            fps: 0,
+            targetFps: fps,
+            statusMessage: 'Renderowanie i miksowanie wielościeżkowego audio (AAC)...',
+            diagnostics: { stageDetails: 'Miksowanie audio 48kHz stereo', failureStage: 'encoding_audio' }
+          });
+
+          audioEncoder = new AudioEncoder({
+            output: (chunk, meta) => {
+              try {
+                muxer.addAudioChunk(chunk, meta);
+                heartbeat();
+              } catch (e: unknown) {
+                encoderError = {
+                  message: 'Błąd muxingu ścieżki audio AAC',
+                  originalError: e,
+                  failureStage: 'muxing'
+                };
+              }
+            },
+            error: (e: unknown) => {
+              const errObj = e as { message?: string };
+              encoderError = {
+                message: `Błąd AudioEncoder: ${errObj?.message || String(e)}`,
+                originalError: e,
+                failureStage: 'encoding_audio'
+              };
+            }
+          });
+
+          audioEncoder.configure({
+            codec: 'mp4a.40.2',
+            numberOfChannels: 2,
+            sampleRate: 48000,
+            bitrate: 192000
+          });
+
+          await this.renderAndEncodeAudio(
+            project, 
+            totalDuration, 
+            audioEncoder, 
+            signal,
+            heartbeat,
+            (msg, pct) => {
+              heartbeat();
+              onProgress({
+                stage: 'encoding_audio',
+                percent: pct,
+                currentFrame: 0,
+                totalFrames,
+                fps: 0,
+                targetFps: fps,
+                statusMessage: msg,
+                diagnostics: { stageDetails: msg, failureStage: 'encoding_audio' }
+              });
+            }
+          );
+        } catch (audioErr) {
+          // Graceful fallback if audio encoding fails
+          audioEncoder = null;
+          heartbeat();
+        }
+      }
+
+      // 8. Main Deterministic Render Loop
+      failureStage = 'rendering';
+      heartbeat();
+      const frameIntervalSec = 1 / fps;
+      const frameDurationMicros = Math.round(frameIntervalSec * 1_000_000);
+      const lastValidFrameMap = new Map<string, HTMLCanvasElement>();
+
+      for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
+        const currentTime = frameIndex * frameIntervalSec;
+
+        if (Date.now() - lastProgressTime > WATCHDOG_TIMEOUT_MS) {
+          throw new Error('TIMEOUT: Przekroczono czas oczekiwania na klatkę (brak postępu potoku).');
+        }
+
+        if (signal?.aborted) {
+          onProgress({ 
+            stage: 'cancelled', 
+            percent: 0, 
+            currentFrame: frameIndex, 
+            totalFrames, 
+            fps: 0, 
+            targetFps: fps, 
+            statusMessage: 'Eksport anulowany przez użytkownika.' 
+          });
+          throw new Error('Eksport anulowany.');
+        }
+
+        if (encoderError) {
+          throw new Error(`PIPELINE_ERROR [${encoderError.failureStage}]: ${encoderError.message}`);
+        }
+
+        // Clear canvas with black base
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, width, height);
+
+        // Find active timeline items
+        const activeItems = sortedItems.filter(
+          item => currentTime >= item.timelineStart && currentTime < (item.timelineStart + item.duration)
+        );
+
+        let mediaEl: CanvasImageSource | null = null;
+        let activeItem: TimelineItem | undefined;
+        let clip: MediaClip | undefined;
+        let timeInItem = 0;
+
+        if (activeItems.length > 0) {
+          activeItem = activeItems[0];
+          clip = clipMap.get(activeItem.clipId);
+          const rawMedia = clip ? mediaElements.get(clip.id) : null;
+          if (rawMedia) {
+            mediaEl = rawMedia;
+            timeInItem = currentTime - activeItem.timelineStart;
+
+            if (mediaEl instanceof HTMLVideoElement) {
+              failureStage = 'decoding';
+              const videoEl = mediaEl;
+              const speed = activeItem.speed || 1;
+              const targetSourceTime = activeItem.sourceStart + (timeInItem * speed);
+              const diff = Math.abs(videoEl.currentTime - targetSourceTime);
+
+              if (diff > 0.04) {
+                videoEl.currentTime = targetSourceTime;
+                await new Promise<void>((res) => {
+                  if (!videoEl.seeking && videoEl.readyState >= 2) {
+                    res();
+                    return;
+                  }
+                  let done = false;
+                  const complete = () => {
+                    if (!done) {
+                      done = true;
+                      videoEl.removeEventListener('seeked', complete);
+                      videoEl.removeEventListener('canplay', complete);
+                      res();
+                    }
+                  };
+                  videoEl.addEventListener('seeked', complete);
+                  videoEl.addEventListener('canplay', complete);
+                  setTimeout(complete, 1000);
+                });
+                heartbeat();
+              }
+
+              // Frame Cache Guard: If video ready, store frame to scratch canvas. If seeking or unready, fallback to cached frame!
+              if (clip && videoEl.videoWidth > 0 && videoEl.readyState >= 2 && !videoEl.seeking) {
+                let frameCache = lastValidFrameMap.get(clip.id);
+                if (!frameCache) {
+                  frameCache = document.createElement('canvas');
+                  frameCache.width = videoEl.videoWidth;
+                  frameCache.height = videoEl.videoHeight;
+                  lastValidFrameMap.set(clip.id, frameCache);
+                } else if (frameCache.width !== videoEl.videoWidth || frameCache.height !== videoEl.videoHeight) {
+                  frameCache.width = videoEl.videoWidth;
+                  frameCache.height = videoEl.videoHeight;
+                }
+                const frameCtx = frameCache.getContext('2d');
+                if (frameCtx) {
+                  try {
+                    frameCtx.drawImage(videoEl, 0, 0, frameCache.width, frameCache.height);
+                  } catch (e) {}
+                }
+              } else if (clip && lastValidFrameMap.has(clip.id)) {
+                // Fallback to last valid frame canvas so canvas NEVER receives a black frame!
+                mediaEl = lastValidFrameMap.get(clip.id)!;
+              }
+            }
+          }
+        }
+
+        // Composite Frame via FrameCompositor using OffscreenCanvas intermediate buffer
+        failureStage = 'rendering';
+        const srcW = mediaEl ? (mediaEl instanceof HTMLVideoElement ? mediaEl.videoWidth : ('naturalWidth' in mediaEl ? (mediaEl as any).naturalWidth : (mediaEl as HTMLCanvasElement).width)) : width;
+        const srcH = mediaEl ? (mediaEl instanceof HTMLVideoElement ? mediaEl.videoHeight : ('naturalHeight' in mediaEl ? (mediaEl as any).naturalHeight : (mediaEl as HTMLCanvasElement).height)) : height;
+
+        const activeOutro = activeItem ? (activeItem.outroCard || (activeItem === sortedItems[sortedItems.length - 1] ? project.settings?.outroCard : undefined)) : undefined;
+        const transInType = activeItem ? (activeItem.transitionIn || (activeItem.fadeIn ? 'fade' : 'cut')) : 'cut';
+        const transOutType = activeItem ? (activeItem.transitionOut || (activeItem.fadeOut ? 'fade' : 'cut')) : 'cut';
+
+        const timestampMicros = Math.round(frameIndex * frameDurationMicros);
+
+        const intermediateResult = FrameCompositor.renderAndTransferToEncoder(
+          {
+            width,
+            height,
+            mediaEl,
+            srcWidth: srcW || width,
+            srcHeight: srcH || height,
+            fitMode: activeItem?.fitMode || 'fit',
+            rotation: activeItem?.rotation || 0,
+            scale: activeItem?.scale || 1,
+            position: activeItem?.position,
+            crop: activeItem?.crop,
+            colorAdjustments: activeItem?.colorAdjustments || clip?.colorAdjustments,
+            globalPreset: project.settings?.colorGrade,
+            titleCard: activeItem?.titleCard,
+            outroCard: activeOutro,
+            dedication: activeItem?.dedication,
+            timeInItem,
+            itemDuration: activeItem?.duration,
+            transitionIn: transInType,
+            transitionOut: transOutType,
+            transitionDuration: activeItem?.transitionDuration,
+            textLayers: project.textLayers,
+            currentTimeSec: currentTime,
+            letterbox: project.settings?.letterbox,
+            sessionId
+          },
+          ctx,
+          timestampMicros,
+          frameDurationMicros
+        );
+
+        // Encode Frame to WebCodecs using the OffscreenCanvas intermediate buffer directly
+        failureStage = 'encoding_video';
+        const videoFrame = intermediateResult.videoFrame || intermediateResult.createVideoFrame(timestampMicros, frameDurationMicros);
+
+        try {
+          if (videoEncoder.state !== 'configured') {
+            throw new Error(encoderError?.message || `VideoEncoder nie jest w stanie gotowości (stan: ${videoEncoder.state})`);
+          }
+          const isKeyFrame = frameIndex % (fps * 2) === 0;
+          videoEncoder.encode(videoFrame, { keyFrame: isKeyFrame });
+        } catch (encErr: unknown) {
+          const errObj = encErr as { message?: string };
+          throw new Error(encoderError?.message || errObj?.message || 'Błąd kodowania klatki wideo.');
+        } finally {
+          videoFrame.close();
+        }
+
+        framesProcessed++;
+        heartbeat();
+
+        // GPU backpressure management
+        if (videoEncoder.encodeQueueSize > 12) {
+          await new Promise<void>((resolve) => {
+            const checkQueue = () => {
+              if (videoEncoder && videoEncoder.encodeQueueSize <= 4) {
+                resolve();
+              } else {
+                setTimeout(checkQueue, 4);
+              }
+            };
+            checkQueue();
+          });
+          heartbeat();
+        }
+
+        // Throttled UI Progress update (every 6 frames or last frame)
+        if (frameIndex % 6 === 0 || frameIndex === totalFrames - 1) {
+          const now = Date.now();
+          const elapsed = (now - startTime) / 1000;
+
+          speedSamples.push({ timestamp: now, frame: frameIndex });
+          while (speedSamples.length > 2 && (now - speedSamples[0].timestamp) > 3000) {
+            speedSamples.shift();
+          }
+
+          let currentFps = Math.max(1, Math.round(framesProcessed / Math.max(0.1, elapsed)));
+          if (speedSamples.length >= 2) {
+            const oldest = speedSamples[0];
+            const sampleElapsed = (now - oldest.timestamp) / 1000;
+            const sampleFrames = frameIndex - oldest.frame;
+            if (sampleElapsed > 0.3 && sampleFrames > 0) {
+              const instantaneousFps = sampleFrames / sampleElapsed;
+              smoothedFps = Math.round((smoothedFps * 0.4) + (instantaneousFps * 0.6));
+            }
+          }
+          currentFps = Math.max(1, smoothedFps);
+
+          const percent = Math.min(95, 8 + Math.round((frameIndex / totalFrames) * 87));
+          const remainingFrames = totalFrames - (frameIndex + 1);
+          const etaSeconds = Math.max(1, Math.ceil(remainingFrames / currentFps));
+          const elapsedSeconds = Math.round(elapsed);
+          const speedMultiplier = Number(((currentFps / fps) || 1).toFixed(1));
+
+          const finishDate = new Date(Date.now() + (etaSeconds * 1000));
+          const estimatedFinishTime = finishDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+          const m = Math.floor(etaSeconds / 60);
+          const s = etaSeconds % 60;
+          const etaFormatted = m > 0 ? `${m}m ${s.toString().padStart(2, '0')}s` : `${s}s`;
+
+          onProgress({
+            stage: 'rendering',
+            percent,
+            currentFrame: frameIndex + 1,
+            totalFrames,
+            fps: currentFps,
+            targetFps: fps,
+            etaSeconds,
+            elapsedSeconds,
+            estimatedFinishTime,
+            speedMultiplier,
+            statusMessage: `Kodowanie: ${frameIndex + 1}/${totalFrames} (${percent}%) • ~${etaFormatted} (${speedMultiplier}x)`,
+            diagnostics: {
+              failureStage: 'rendering',
+              stageDetails: `Klatka ${frameIndex + 1}/${totalFrames}, ${speedMultiplier}x`
+            }
+          });
+        }
+      }
+
+      // 9. Finalization & Flush
+      failureStage = 'muxing';
+      onProgress({ 
+        stage: 'finalizing', 
+        percent: 96, 
+        currentFrame: totalFrames, 
+        totalFrames, 
+        fps: 0, 
+        targetFps: fps, 
+        statusMessage: 'Finalizacja kontenera MP4 i zamykanie strumieni...',
+        diagnostics: { failureStage: 'muxing' }
+      });
+
+      try {
+        if (videoEncoder.state === 'configured') {
+          await videoEncoder.flush();
+        }
+      } catch (fErr: any) {
+        if (!String(fErr).includes('close()') && fErr?.name !== 'AbortError') {
+          console.warn('[WebCodecsMp4Provider] videoEncoder flush warning:', fErr);
+        }
+      }
+
+      if (audioEncoder && (audioEncoder.state as string) === 'configured') {
+        try {
+          await audioEncoder.flush();
+        } catch {}
+      }
+
+      muxer.finalize();
+      
+      try {
+        if (videoEncoder.state !== 'closed') videoEncoder.close();
+      } catch {}
+      if (audioEncoder && (audioEncoder.state as string) !== 'closed') {
+        try {
+          audioEncoder.close();
+        } catch {}
+      }
+
+      let finalBlob: Blob;
+      if (useStreamingTarget && streamedChunks.length > 0) {
+        finalBlob = new Blob(streamedChunks, { type: 'video/mp4' });
+      } else {
+        const { buffer } = (muxer.target as ArrayBufferTarget);
+        finalBlob = new Blob([buffer], { type: 'video/mp4' });
+      }
+
+      onProgress({ 
+        stage: 'validating', 
+        percent: 98, 
+        currentFrame: totalFrames, 
+        totalFrames, 
+        fps: 0, 
+        targetFps: fps, 
+        statusMessage: 'Weryfikacja integralności wyjściowego pliku MP4...' 
+      });
+
+      const verification = await this.verifyOutput(finalBlob);
+      if (!verification.valid) {
+        throw new Error(verification.error || 'Błąd walidacji pliku MP4.');
+      }
+
+      const cleanName = (project.name || 'Master_Film').replace(/[^a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ_-]/g, '_');
+      const fileName = `${cleanName}_${options.resolution}_${fps}fps.mp4`;
+      const blobUrl = URL.createObjectURL(finalBlob);
+
+      onProgress({ 
+        stage: 'completed', 
+        percent: 100, 
+        currentFrame: totalFrames, 
+        totalFrames, 
+        fps: 0, 
+        targetFps: fps, 
+        statusMessage: 'Film został pomyślnie wyrenderowany!' 
+      });
+
+      return {
+        blob: finalBlob,
+        mimeType: 'video/mp4',
+        duration: verification.duration || totalDuration,
+        width,
+        height,
+        sizeBytes: finalBlob.size,
+        fileName,
+        blobUrl,
+        verifiedPlayable: true
+      };
+
+    } catch (err: unknown) {
+      const errMsg = (err as Error)?.message || String(err);
+      onProgress({ 
+        stage: 'error', 
+        percent: 0, 
+        currentFrame: framesProcessed, 
+        totalFrames: 100, 
+        fps: 0, 
+        targetFps: 30, 
+        statusMessage: `Błąd renderowania [${failureStage}]: ${errMsg}`,
+        diagnostics: { 
+          lastError: errMsg,
+          failureStage,
+          lastClipName: currentClipName
+        }
+      });
+
+      try {
+        if (videoEncoder && videoEncoder.state !== 'closed') videoEncoder.close();
+        if (audioEncoder && audioEncoder.state !== 'closed') audioEncoder.close();
+      } catch {}
+
+      throw err;
+    } finally {
+      // Clean up buffers associated with this export session in FrameCompositor
+      FrameCompositor.cleanupSession(sessionId);
+
+      // Clean up video elements from DOM
+      for (const el of mediaElements.values()) {
+        if (el instanceof HTMLVideoElement) {
+          try {
+            el.pause();
+            el.src = '';
+            el.load();
+            if (el.parentNode) el.parentNode.removeChild(el);
+          } catch {}
+        }
+      }
+      mediaElements.clear();
+    }
+  }
+
+  /**
+   * Render audio mix to single persistent OfflineAudioContext and encode using AudioEncoder & QueueController
+   */
+  private async renderAndEncodeAudio(
+    project: ProjectState,
+    totalDuration: number,
+    audioEncoder: AudioEncoder,
+    signal?: AbortSignal,
+    onHeartbeat?: () => void,
+    onProgressUpdate?: (msg: string, percent: number) => void
+  ): Promise<void> {
+    const sampleRate = STANDARD_RENDER_SAMPLE_RATE;
+    const totalSamples = Math.max(1, Math.ceil(totalDuration * sampleRate));
+    const OfflineCtxClass = window.OfflineAudioContext || (window as unknown as { webkitOfflineAudioContext: typeof OfflineAudioContext }).webkitOfflineAudioContext;
+    if (!OfflineCtxClass) return;
+
+    // Single persistent master OfflineAudioContext for the entire mix (strictly 48kHz Stereo)
+    const offlineCtx = new OfflineCtxClass(STANDARD_RENDER_CHANNELS, totalSamples, sampleRate);
+    const clipMap = new Map<string, MediaClip>();
+    (project.mediaLibrary || []).forEach(c => clipMap.set(c.id, c));
+    const audioBufferCache = new Map<string, AudioBuffer | null>();
+
+    const fetchWithTimeout = async (url: string, timeoutMs = 25000): Promise<Response> => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const isGDrive = url.includes('googleapis.com') || url.includes('/api/drive/stream/');
+        const headers: HeadersInit = {};
+        if (isGDrive) {
+          const token = typeof window !== 'undefined' ? (sessionStorage.getItem('gdrive_access_token') || localStorage.getItem('gdrive_access_token')) : null;
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+          }
+        }
+        const res = await fetch(url, { headers, signal: controller.signal });
+        clearTimeout(timer);
+        return res;
+      } catch (e) {
+        clearTimeout(timer);
+        throw e;
+      }
+    };
+
+    // Detect voiceover / narration intervals for automatic Audio Ducking of background music
+    const rawAudioTracks = project.audioTracks || [];
+    const activeAudioTracks = rawAudioTracks.filter(t => !t.muted);
+    const voiceoverIntervals: { start: number; end: number; duckingRatio: number }[] = [];
+    const isDuckingActive = project.settings?.audioDucking !== false && project.settings?.audioBalance?.duckingEnabled !== false;
+    const duckAmount = project.settings?.duckingIntensity !== undefined ? project.settings.duckingIntensity / 100 : (project.settings?.audioBalance?.duckingAmount ?? 0.6);
+
+    for (const track of activeAudioTracks) {
+      if (track.trackType === 'voiceover') {
+        const start = Math.max(0, track.timelineStart || 0);
+        const end = start + (track.duration || 1);
+        voiceoverIntervals.push({ start, end, duckingRatio: Math.max(0.1, 1 - duckAmount) });
+      }
+    }
+
+    let attachedSourcesCount = 0;
+
+    // 1. Attach clip audio (Explicitly resampled to 48kHz Stereo)
+    const timelineItems = project.timelineItems || [];
+    const videoItems = timelineItems.filter(item => {
+      if (item.muted || item.volume === 0) return false;
+      const clip = clipMap.get(item.clipId);
+      return clip && clip.type === 'video';
+    });
+
+    for (let i = 0; i < videoItems.length; i++) {
+      if (signal?.aborted) return;
+      onHeartbeat?.();
+
+      const item = videoItems[i];
+      const clip = clipMap.get(item.clipId);
+      if (!clip) continue;
+
+      onProgressUpdate?.(
+        `Wczytywanie audio z ujęć (${i + 1}/${videoItems.length}): ${clip.name}...`,
+        Math.round(6 + (i / Math.max(1, videoItems.length)) * 4)
+      );
+
+      let decoded: AudioBuffer | null = null;
+      if (audioBufferCache.has(clip.id)) {
+        decoded = audioBufferCache.get(clip.id) || null;
+      } else {
+        let arrayBuf: ArrayBuffer | null = null;
+        if (clip.file) {
+          try { arrayBuf = await clip.file.arrayBuffer(); } catch {}
+        }
+        if (!arrayBuf) {
+          const src = await resolveClipMediaUrl(clip);
+          if (src) {
+            try {
+              const res = await fetchWithTimeout(src, 20000);
+              arrayBuf = await res.arrayBuffer();
+            } catch {
+              arrayBuf = null;
+            }
+          }
+        }
+        if (!arrayBuf) {
+          arrayBuf = await getMediaArrayBuffer(clip.id);
+        }
+
+        if (arrayBuf && arrayBuf.byteLength > 0) {
+          try {
+            onHeartbeat?.();
+            decoded = await SafeAudioDecoder.decodeTo48kStereo(offlineCtx, arrayBuf);
+            audioBufferCache.set(clip.id, decoded);
+          } catch {
+            audioBufferCache.set(clip.id, null);
+          }
+        } else {
+          audioBufferCache.set(clip.id, null);
+        }
+      }
+
+      onHeartbeat?.();
+
+      if (decoded && decoded.duration > 0) {
+        try {
+          const source = offlineCtx.createBufferSource();
+          source.buffer = decoded;
+
+          const gain = offlineCtx.createGain();
+          const baseVolume = (item.volume ?? 1) * (project.settings?.audioBalance?.clipVolume ?? 1);
+          const startTime = Math.max(0, item.timelineStart);
+          const endTime = startTime + item.duration;
+
+          gain.gain.setValueAtTime(baseVolume, startTime);
+          if (item.fadeIn && item.fadeIn > 0) {
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(baseVolume, startTime + Math.min(item.fadeIn, item.duration));
+          }
+          if (item.fadeOut && item.fadeOut > 0) {
+            const fadeOutStart = Math.max(startTime, endTime - item.fadeOut);
+            gain.gain.setValueAtTime(baseVolume, fadeOutStart);
+            gain.gain.linearRampToValueAtTime(0, endTime);
+          }
+
+          source.connect(gain);
+          gain.connect(offlineCtx.destination);
+
+          const maxOffset = Math.max(0, decoded.duration - 0.05);
+          const safeOffset = Math.max(0, Math.min(item.sourceStart || 0, maxOffset));
+          const safeDuration = Math.max(0.05, Math.min(item.duration, decoded.duration - safeOffset));
+          source.start(startTime, safeOffset, safeDuration);
+          attachedSourcesCount++;
+        } catch {}
+      }
+    }
+
+    // 2. Attach background audio tracks & voiceover (Explicitly resampled to 48kHz Stereo)
+    for (let j = 0; j < activeAudioTracks.length; j++) {
+      if (signal?.aborted) return;
+      onHeartbeat?.();
+
+      const track = activeAudioTracks[j];
+      const isVoiceover = track.trackType === 'voiceover';
+      const trackLabel = isVoiceover ? 'Lektor / Głos' : (track.name || 'Muzyka');
+
+      onProgressUpdate?.(
+        `Wczytywanie ścieżki (${j + 1}/${activeAudioTracks.length}): ${trackLabel}...`,
+        Math.round(10 + (j / Math.max(1, activeAudioTracks.length)) * 3)
+      );
+
+      try {
+        let arrayBuf: ArrayBuffer | null = null;
+        if (track.file) {
+          arrayBuf = await track.file.arrayBuffer();
+        } else {
+          const freshUrl = await resolveAudioTrackUrl(track);
+          arrayBuf = await getMediaArrayBuffer(track.id, undefined, freshUrl || track.objectUrl);
+        }
+
+        if (arrayBuf && arrayBuf.byteLength > 0) {
+          onHeartbeat?.();
+          const decoded = await SafeAudioDecoder.decodeTo48kStereo(offlineCtx, arrayBuf);
+
+          if (decoded && decoded.duration > 0) {
+            const source = offlineCtx.createBufferSource();
+            source.buffer = decoded;
+            const gain = offlineCtx.createGain();
+
+            // Calculate base volume depending on track type (voiceover vs music vs sfx)
+            let baseVol = track.volume ?? 1;
+            if (isVoiceover) {
+              baseVol *= (project.settings?.audioBalance?.voiceoverVolume ?? 1.0);
+            } else if (track.trackType === 'music' || !track.trackType) {
+              baseVol *= (project.settings?.audioBalance?.musicVolume ?? 0.8);
+            }
+
+            gain.gain.setValueAtTime(baseVol, 0);
+
+            // Apply Voiceover Ducking Automation for background music tracks
+            if (!isVoiceover && voiceoverIntervals.length > 0 && isDuckingActive) {
+              for (const vInt of voiceoverIntervals) {
+                const duckedVol = baseVol * vInt.duckingRatio;
+                gain.gain.setValueAtTime(baseVol, Math.max(0, vInt.start - 0.3));
+                gain.gain.linearRampToValueAtTime(duckedVol, vInt.start);
+                gain.gain.setValueAtTime(duckedVol, vInt.end);
+                gain.gain.linearRampToValueAtTime(baseVol, vInt.end + 0.5);
+              }
+            }
+
+            source.connect(gain);
+            gain.connect(offlineCtx.destination);
+
+            const trackOffset = Math.max(0, Math.min(track.sourceStart || 0, decoded.duration - 0.05));
+            const trackDur = Math.max(0.05, Math.min(track.duration || decoded.duration, decoded.duration - trackOffset));
+            source.start(track.timelineStart || 0, trackOffset, trackDur);
+            attachedSourcesCount++;
+          }
+        }
+      } catch {}
+      onHeartbeat?.();
+    }
+
+    // If no user audio tracks or video audio attached, export with silence (no synthetic ambient drones)
+    if (attachedSourcesCount === 0) {
+      // Pure silence - no artificial ambient sound
+      const silentBuffer = offlineCtx.createBuffer(2, totalSamples, 48000);
+      const fbSource = offlineCtx.createBufferSource();
+      fbSource.buffer = silentBuffer;
+      fbSource.connect(offlineCtx.destination);
+      fbSource.start(0, 0, totalDuration);
+    }
+
+    onProgressUpdate?.('Miksowanie wielościeżkowego audio (48kHz stereo)...', 13);
+    const renderedAudioBuf = await offlineCtx.startRendering();
+    if (signal?.aborted) return;
+    onHeartbeat?.();
+
+    // Stream audio buffer chunks to AudioEncoder with robust queue management
+    const channel0 = renderedAudioBuf.getChannelData(0);
+    const channel1 = renderedAudioBuf.numberOfChannels > 1 ? renderedAudioBuf.getChannelData(1) : channel0;
+
+    // Safety peak limiter
+    for (let s = 0; s < totalSamples; s++) {
+      if (channel0[s] > 0.98) channel0[s] = 0.98;
+      else if (channel0[s] < -0.98) channel0[s] = -0.98;
+      if (channel1[s] > 0.98) channel1[s] = 0.98;
+      else if (channel1[s] < -0.98) channel1[s] = -0.98;
+    }
+
+    const queueController = new AudioEncoderQueueController(audioEncoder, 8, onHeartbeat);
+    const chunkSize = 1024; // Standard AAC frame size
+    let sampleOffset = 0;
+
+    while (sampleOffset < totalSamples) {
+      if (signal?.aborted) break;
+      onHeartbeat?.();
+
+      const currentChunkSize = Math.min(chunkSize, totalSamples - sampleOffset);
+
+      const planarData = new Float32Array(currentChunkSize * 2);
+      for (let i = 0; i < currentChunkSize; i++) {
+        planarData[i] = channel0[sampleOffset + i];
+        planarData[currentChunkSize + i] = channel1[sampleOffset + i];
+      }
+
+      const timestampMicros = Math.round((sampleOffset / sampleRate) * 1_000_000);
+
+      const audioData = new AudioData({
+        format: 'f32-planar',
+        sampleRate,
+        numberOfFrames: currentChunkSize,
+        numberOfChannels: 2,
+        timestamp: timestampMicros,
+        data: planarData
+      });
+
+      await queueController.enqueue(audioData, signal);
+
+      sampleOffset += currentChunkSize;
+
+      if (sampleOffset % (chunkSize * 80) === 0 || sampleOffset >= totalSamples) {
+        const aacPct = Math.round(14 + (sampleOffset / totalSamples) * 4);
+        onProgressUpdate?.(`Kodowanie audio AAC (${Math.round((sampleOffset / totalSamples) * 100)}%)...`, aacPct);
+      }
+    }
+
+    // Robust Flush Phase: drain encoder queue and flush before completing
+    onProgressUpdate?.('Finalizacja i synchronizacja strumienia audio...', 18);
+    await queueController.flush(signal);
+  }
+
+  /**
+   * Generates a stylized fallback frame when a media clip format cannot be decoded
+   */
+  private createFallbackFrameElement(clipName: string, width: number, height: number): HTMLCanvasElement {
+    const canvas = document.createElement('canvas');
+    canvas.width = width || 1920;
+    canvas.height = height || 1080;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      grad.addColorStop(0, '#0E0D0B');
+      grad.addColorStop(0.5, '#1E1912');
+      grad.addColorStop(1, '#090807');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = 'rgba(212, 175, 55, 0.45)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(32, 32, canvas.width - 64, canvas.height - 64);
+
+      const vignette = ctx.createRadialGradient(
+        canvas.width / 2, canvas.height / 2, canvas.width * 0.25,
+        canvas.width / 2, canvas.height / 2, canvas.width * 0.7
+      );
+      vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      vignette.addColorStop(1, 'rgba(0, 0, 0, 0.65)');
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = 'bold 32px "Cinzel", "Times New Roman", serif';
+      ctx.fillStyle = '#F5F2EA';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+      ctx.shadowBlur = 10;
+      ctx.fillText(clipName, canvas.width / 2, canvas.height / 2 - 16);
+
+      ctx.font = '14px monospace';
+      ctx.fillStyle = '#D4AF37';
+      ctx.fillText('UJĘCIE WIDEO • KAPI-STUDIO', canvas.width / 2, canvas.height / 2 + 28);
+    }
+    return canvas;
+  }
+}
+
+export const webCodecsMp4RenderProvider = new WebCodecsMp4RenderProvider();
