@@ -469,8 +469,8 @@ export function MontageView({
   const [timelineZoom, setTimelineZoom] = useState<number>(100); // 50% to 300%
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Proxy Playback & Adaptive Resource Engine (ETAP 2)
-  const [useProxyPreview, setUseProxyPreview] = useState<boolean>(true);
+  // Proxy Playback & Adaptive Resource Engine (ETAP 2) - Bazowo WYŁĄCZONY
+  const [useProxyPreview, setUseProxyPreview] = useState<boolean>(false);
   const [systemMetrics, setSystemMetrics] = useState<SystemMetrics>(adaptiveResourceManager.getMetrics());
   const [isGeneratingAllProxies, setIsGeneratingAllProxies] = useState<boolean>(false);
 
@@ -853,8 +853,21 @@ export function MontageView({
     vid.volume = finalVolume;
     vid.playbackRate = speed;
 
-    if (isPlaying && vid.paused) {
-      vid.play().catch(() => {});
+    if (isPlaying && vid.paused && !(vid as any)._isPlayPending) {
+      (vid as any)._isPlayPending = true;
+      const p = vid.play();
+      if (p !== undefined) {
+        p.then(() => {
+          (vid as any)._isPlayPending = false;
+        }).catch(err => {
+          (vid as any)._isPlayPending = false;
+          console.warn('[MontageView] Video playback promise prevented, retrying muted:', err);
+          if (!vid.muted) {
+            vid.muted = true;
+            vid.play().catch(() => {});
+          }
+        });
+      }
     } else if (!isPlaying && !vid.paused) {
       vid.pause();
     }
@@ -1304,9 +1317,15 @@ export function MontageView({
                   if (videoRef.current && activeTimelineItem) {
                     const timeInItem = Math.max(0, currentTime - activeTimelineItem.timelineStart);
                     const target = activeTimelineItem.sourceStart + (timeInItem * (activeTimelineItem.speed || 1));
-                    if (Number.isFinite(target)) {
+                    if (Number.isFinite(target) && videoRef.current.readyState >= 1) {
                       try { videoRef.current.currentTime = target; } catch (e) {}
                     }
+                  }
+                }}
+                onError={() => {
+                  if (activeClip) {
+                    console.warn('[MontageView] Video element error, resolving fresh media URL for clip:', activeClip.name);
+                    resolveClipUrl(activeClip);
                   }
                 }}
               />

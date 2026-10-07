@@ -30,6 +30,7 @@ export const DEFAULT_SETTINGS: ProjectSettings = {
   targetFps: 30,
   aspectRatio: '16:9',
   fitMode: 'fit',
+  useProxyMode: false,
   audioBalance: {
     musicVolume: 0.8,
     clipVolume: 0.7
@@ -70,6 +71,11 @@ export function createInitialProject(id: string = `proj_${Date.now()}`): Project
     chapters: [],
     sequences: [defaultSequence],
     activeSequenceId: defaultSeqId,
+    proxySettings: {
+      enabled: false,
+      profile: 'medium_720p',
+      autoDegrade: false
+    },
     versions: []
   };
 }
