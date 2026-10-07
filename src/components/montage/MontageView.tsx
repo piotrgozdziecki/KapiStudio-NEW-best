@@ -43,7 +43,8 @@ import {
   Palette,
   Sun,
   Contrast,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Scaling
 } from 'lucide-react';
 import type { ProjectState, TimelineItem, MediaClip, FitMode, TransitionType, TitleCard, AudioTrackItem } from '../../types/project';
 import { urlRegistry } from '../../core/media/urlRegistry';
@@ -448,6 +449,7 @@ export function MontageView({
     sharpness: 20
   });
   const [isBeautyStudioOpen, setIsBeautyStudioOpen] = useState<boolean>(false);
+  const [inspectorTab, setInspectorTab] = useState<'trim' | 'transform' | 'speed' | 'color' | 'audio' | 'title'>('trim');
 
   const beautyFilterStyle = useMemo(() => {
     if (!beautyGrade.enabled) return 'none';
@@ -2313,270 +2315,280 @@ export function MontageView({
                 </div>
               </div>
 
-              {/* Duration & Trim Section (Zdjęcia vs Filmy) */}
-              {selectedClip.type === 'image' ? (
-                <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-indigo-300 uppercase font-mono flex items-center gap-2">
-                      <Clock className="w-3.5 h-3.5 text-indigo-400" />
-                      Czas Wyświetlania Zdjęcia w Filmie
-                    </h4>
-                    <span className="text-xs font-mono font-bold text-white bg-zinc-900 px-3 py-1 rounded-lg border border-indigo-500/30">
-                      {selectedItem.duration.toFixed(1)}s
-                    </span>
-                  </div>
-
-                  {/* Stepper buttons & Input */}
-                  <div className="flex items-center gap-2">
+              {/* CapCut Pro Segmented Inspector Navigation Tabs */}
+              <div className="flex items-center gap-1.5 p-1 bg-zinc-950/80 rounded-xl border border-zinc-800/80 overflow-x-auto custom-scrollbar">
+                {[
+                  { id: 'trim', label: 'Przycinanie', icon: Scissors },
+                  { id: 'transform', label: 'Kadr & Obrót', icon: Scaling },
+                  { id: 'speed', label: 'Prędkość & Ramping', icon: Gauge },
+                  { id: 'color', label: 'Kolor & Piękno', icon: Palette },
+                  { id: 'audio', label: 'Dźwięk & Audio', icon: Volume2 },
+                  { id: 'title', label: 'Plansza & Tytuł', icon: Type }
+                ].map(tab => {
+                  const Icon = tab.icon;
+                  const isActive = inspectorTab === tab.id;
+                  return (
                     <button
-                      onClick={() => handlePhotoDurationChange(selectedItem.duration - 1)}
-                      className="px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-mono text-xs cursor-pointer border border-zinc-700/60"
-                      title="-1 sekunda"
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setInspectorTab(tab.id as any)}
+                      className={`flex-1 min-w-[100px] sm:min-w-0 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                          : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                      }`}
                     >
-                      -1s
+                      <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-white' : 'text-zinc-400'}`} />
+                      <span>{tab.label}</span>
                     </button>
-                    <button
-                      onClick={() => handlePhotoDurationChange(selectedItem.duration - 0.5)}
-                      className="px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-mono text-xs cursor-pointer border border-zinc-700/60"
-                      title="-0.5 sekundy"
-                    >
-                      -0.5s
-                    </button>
+                  );
+                })}
+              </div>
 
-                    <div className="flex-1 text-center font-mono relative">
-                      <input
-                        type="number"
-                        min="0.5"
-                        max="60"
-                        step="0.5"
-                        value={selectedItem.duration.toFixed(1)}
-                        onChange={(e) => handlePhotoDurationChange(parseFloat(e.target.value) || 3)}
-                        className="w-full text-center bg-zinc-900 border border-zinc-700 focus:border-indigo-500 rounded-xl py-2 text-base font-bold text-indigo-300 focus:outline-none"
-                      />
+              {/* TAB 1: PRZYCINANIE (TRIM & DURATION) */}
+              {inspectorTab === 'trim' && (
+                selectedClip.type === 'image' ? (
+                  <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3 animate-fadeIn">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-indigo-300 uppercase font-mono flex items-center gap-2">
+                        <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                        Czas Wyświetlania Zdjęcia w Filmie
+                      </h4>
+                      <span className="text-xs font-mono font-bold text-white bg-zinc-900 px-3 py-1 rounded-lg border border-indigo-500/30">
+                        {selectedItem.duration.toFixed(1)}s
+                      </span>
                     </div>
 
-                    <button
-                      onClick={() => handlePhotoDurationChange(selectedItem.duration + 0.5)}
-                      className="px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-mono text-xs cursor-pointer border border-zinc-700/60"
-                      title="+0.5 sekundy"
-                    >
-                      +0.5s
-                    </button>
-                    <button
-                      onClick={() => handlePhotoDurationChange(selectedItem.duration + 1)}
-                      className="px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-mono text-xs cursor-pointer border border-zinc-700/60"
-                      title="+1 sekunda"
-                    >
-                      +1s
-                    </button>
-                  </div>
-
-                  {/* Range Slider */}
-                  <input
-                    type="range"
-                    min="1"
-                    max="30"
-                    step="0.5"
-                    value={selectedItem.duration}
-                    onChange={(e) => handlePhotoDurationChange(parseFloat(e.target.value))}
-                    className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                  />
-
-                  {/* Quick Preset Chips */}
-                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                    <span className="text-[11px] text-zinc-400 font-mono mr-1">Szybki wybór:</span>
-                    {[2, 3, 4, 5, 7, 10, 15, 20].map(sec => (
+                    {/* Stepper buttons & Input */}
+                    <div className="flex items-center gap-2">
                       <button
-                        key={sec}
-                        onClick={() => handlePhotoDurationChange(sec)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-mono cursor-pointer transition ${
-                          Math.abs(selectedItem.duration - sec) < 0.2
-                            ? 'bg-indigo-600 text-white font-bold shadow'
-                            : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800'
-                        }`}
+                        onClick={() => handlePhotoDurationChange(selectedItem.duration - 1)}
+                        className="px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-mono text-xs cursor-pointer border border-zinc-700/60"
+                        title="-1 sekunda"
                       >
-                        {sec}s
+                        -1s
                       </button>
-                    ))}
-                  </div>
+                      <button
+                        onClick={() => handlePhotoDurationChange(selectedItem.duration - 0.5)}
+                        className="px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-mono text-xs cursor-pointer border border-zinc-700/60"
+                        title="-0.5 sekundy"
+                      >
+                        -0.5s
+                      </button>
 
-                  {/* Apply to All Photos Button */}
-                  <button
-                    onClick={() => handleApplyDurationToAllImages(selectedItem.duration)}
-                    className="w-full mt-2 py-2 px-3 rounded-xl bg-indigo-950/40 hover:bg-indigo-900/60 border border-indigo-500/30 text-indigo-300 hover:text-white text-xs font-mono font-bold flex items-center justify-center gap-2 transition cursor-pointer"
-                  >
-                    <Sparkles className="w-4 h-4 text-indigo-400" />
-                    <span>✦ Zastosuj {selectedItem.duration.toFixed(1)}s do WSZYSTKICH zdjęć w filmie</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h4 className="text-xs font-bold text-indigo-300 uppercase font-mono flex items-center gap-2">
-                      <Scissors className="w-3.5 h-3.5 text-indigo-400" />
-                      Precyzyjne Przycinanie Ujęcia (Trim 2.0)
-                    </h4>
-                    <div className="flex items-center gap-3 text-xs font-mono font-bold">
-                      <span className="text-white bg-zinc-950 px-3 py-1 rounded-lg border border-zinc-800">
-                        START {formatTimePrecise(selectedItem.sourceStart)}
-                      </span>
-                      <span className="text-white bg-zinc-950 px-3 py-1 rounded-lg border border-zinc-800">
-                        END {formatTimePrecise(selectedItem.sourceEnd)}
-                      </span>
-                      <span className="text-indigo-300 bg-indigo-950/50 px-3 py-1 rounded-lg border border-indigo-500/40">
-                        DURATION {formatTimePrecise(selectedItem.duration)}
-                      </span>
+                      <div className="flex-1 text-center font-mono relative">
+                        <input
+                          type="number"
+                          min="0.5"
+                          max="60"
+                          step="0.5"
+                          value={selectedItem.duration.toFixed(1)}
+                          onChange={(e) => handlePhotoDurationChange(parseFloat(e.target.value) || 3)}
+                          className="w-full text-center bg-zinc-900 border border-zinc-700 focus:border-indigo-500 rounded-xl py-2 text-base font-bold text-indigo-300 focus:outline-none"
+                        />
+                      </div>
+
+                      <button
+                        onClick={() => handlePhotoDurationChange(selectedItem.duration + 0.5)}
+                        className="px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-mono text-xs cursor-pointer border border-zinc-700/60"
+                        title="+0.5 sekundy"
+                      >
+                        +0.5s
+                      </button>
+                      <button
+                        onClick={() => handlePhotoDurationChange(selectedItem.duration + 1)}
+                        className="px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-mono text-xs cursor-pointer border border-zinc-700/60"
+                        title="+1 sekunda"
+                      >
+                        +1s
+                      </button>
+                    </div>
+
+                    {/* Range Slider */}
+                    <input
+                      type="range"
+                      min="1"
+                      max="30"
+                      step="0.5"
+                      value={selectedItem.duration}
+                      onChange={(e) => handlePhotoDurationChange(parseFloat(e.target.value))}
+                      className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                    />
+
+                    {/* Quick Preset Chips */}
+                    <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                      <span className="text-[11px] text-zinc-400 font-mono mr-1">Szybki wybór:</span>
+                      {[2, 3, 4, 5, 7, 10, 15, 20].map(sec => (
+                        <button
+                          key={sec}
+                          onClick={() => handlePhotoDurationChange(sec)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-mono cursor-pointer transition ${
+                            Math.abs(selectedItem.duration - sec) < 0.2
+                              ? 'bg-indigo-600 text-white font-bold shadow'
+                              : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800'
+                          }`}
+                        >
+                          {sec}s
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Apply to All Photos Button */}
+                    <button
+                      onClick={() => handleApplyDurationToAllImages(selectedItem.duration)}
+                      className="w-full mt-2 py-2 px-3 rounded-xl bg-indigo-950/40 hover:bg-indigo-900/60 border border-indigo-500/30 text-indigo-300 hover:text-white text-xs font-mono font-bold flex items-center justify-center gap-2 transition cursor-pointer"
+                    >
+                      <Sparkles className="w-4 h-4 text-indigo-400" />
+                      <span>✦ Zastosuj {selectedItem.duration.toFixed(1)}s do WSZYSTKICH zdjęć w filmie</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4 animate-fadeIn">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h4 className="text-xs font-bold text-indigo-300 uppercase font-mono flex items-center gap-2">
+                        <Scissors className="w-3.5 h-3.5 text-indigo-400" />
+                        Precyzyjne Przycinanie Ujęcia (Trim 2.0)
+                      </h4>
+                      <div className="flex items-center gap-3 text-xs font-mono font-bold">
+                        <span className="text-white bg-zinc-950 px-3 py-1 rounded-lg border border-zinc-800">
+                          START {formatTimePrecise(selectedItem.sourceStart)}
+                        </span>
+                        <span className="text-white bg-zinc-950 px-3 py-1 rounded-lg border border-zinc-800">
+                          END {formatTimePrecise(selectedItem.sourceEnd)}
+                        </span>
+                        <span className="text-indigo-300 bg-indigo-950/50 px-3 py-1 rounded-lg border border-indigo-500/40">
+                          DURATION {formatTimePrecise(selectedItem.duration)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Range Sliders for Start & End */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-2">
+                        <div className="flex justify-between items-center text-xs font-mono">
+                          <span className="text-zinc-400">Początek (Start):</span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleStepTrim('start', -1)}
+                              className="px-2 py-0.5 rounded bg-zinc-900 text-white hover:bg-zinc-800 cursor-pointer border border-zinc-800"
+                            >
+                              -1 kl.
+                            </button>
+                            <span className="text-white font-bold">{selectedItem.sourceStart.toFixed(2)}s</span>
+                            <button
+                              onClick={() => handleStepTrim('start', 1)}
+                              className="px-2 py-0.5 rounded bg-zinc-900 text-white hover:bg-zinc-800 cursor-pointer border border-zinc-800"
+                            >
+                              +1 kl.
+                            </button>
+                          </div>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={selectedItem.sourceEnd - 0.2}
+                          step={0.033}
+                          value={selectedItem.sourceStart}
+                          onChange={(e) => handleTrimChange('start', parseFloat(e.target.value))}
+                          className="w-full accent-indigo-500 cursor-pointer"
+                        />
+                      </div>
+
+                      <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-2">
+                        <div className="flex justify-between items-center text-xs font-mono">
+                          <span className="text-zinc-400">Koniec (End):</span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleStepTrim('end', -1)}
+                              className="px-2 py-0.5 rounded bg-zinc-900 text-white hover:bg-zinc-800 cursor-pointer border border-zinc-800"
+                            >
+                              -1 kl.
+                            </button>
+                            <span className="text-white font-bold">{selectedItem.sourceEnd.toFixed(2)}s</span>
+                            <button
+                              onClick={() => handleStepTrim('end', 1)}
+                              className="px-2 py-0.5 rounded bg-zinc-900 text-white hover:bg-zinc-800 cursor-pointer border border-zinc-800"
+                            >
+                              +1 kl.
+                            </button>
+                          </div>
+                        </div>
+                        <input
+                          type="range"
+                          min={selectedItem.sourceStart + 0.2}
+                          max={selectedClip.duration}
+                          step={0.033}
+                          value={selectedItem.sourceEnd}
+                          onChange={(e) => handleTrimChange('end', parseFloat(e.target.value))}
+                          className="w-full accent-indigo-500 cursor-pointer"
+                        />
+                      </div>
                     </div>
                   </div>
+                )
+              )}
 
-                  {/* Range Sliders for Start & End */}
+              {/* TAB 2: KADROWANIE & OBRÓT (TRANSFORM) */}
+              {inspectorTab === 'transform' && (
+                <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-4 animate-fadeIn">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-2">
-                      <div className="flex justify-between items-center text-xs font-mono">
-                        <span className="text-zinc-400">Początek (Start):</span>
-                        <div className="flex items-center gap-1.5">
+                    {/* Fit Mode */}
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-mono text-zinc-400 uppercase block font-semibold">Kadrowanie & Dopasowanie</label>
+                      <div className="grid grid-cols-3 gap-1.5 bg-zinc-900 p-1.5 rounded-xl border border-zinc-800">
+                        {(['fit', 'fill', 'original'] as const).map(mode => (
                           <button
-                            onClick={() => handleStepTrim('start', -1)}
-                            className="px-2 py-0.5 rounded bg-zinc-900 text-white hover:bg-zinc-800 cursor-pointer border border-zinc-800"
+                            key={mode}
+                            onClick={() => onUpdateTimelineItem(selectedItem.id, { fitMode: mode })}
+                            className={`py-2 text-xs font-bold rounded-lg uppercase cursor-pointer transition-all ${
+                              (selectedItem.fitMode || 'fit') === mode
+                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                                : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                            }`}
                           >
-                            -1 kl.
+                            {mode === 'fit' ? 'FIT (Dopasuj)' : (mode === 'fill' ? 'FILL (Wypełnij)' : 'ORIG (Oryginał)')}
                           </button>
-                          <span className="text-white font-bold">{selectedItem.sourceStart.toFixed(2)}s</span>
-                          <button
-                            onClick={() => handleStepTrim('start', 1)}
-                            className="px-2 py-0.5 rounded bg-zinc-900 text-white hover:bg-zinc-800 cursor-pointer border border-zinc-800"
-                          >
-                            +1 kl.
-                          </button>
-                        </div>
+                        ))}
                       </div>
-                      <input
-                        type="range"
-                        min={0}
-                        max={selectedItem.sourceEnd - 0.2}
-                        step={0.033}
-                        value={selectedItem.sourceStart}
-                        onChange={(e) => handleTrimChange('start', parseFloat(e.target.value))}
-                        className="w-full accent-indigo-500 cursor-pointer"
-                      />
                     </div>
 
-                    <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-2">
-                      <div className="flex justify-between items-center text-xs font-mono">
-                        <span className="text-zinc-400">Koniec (End):</span>
-                        <div className="flex items-center gap-1.5">
+                    {/* Rotation */}
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-mono text-zinc-400 uppercase block font-semibold">Obrót Ujęcia</label>
+                      <div className="grid grid-cols-4 gap-1.5 bg-zinc-900 p-1.5 rounded-xl border border-zinc-800">
+                        {[0, 90, 180, 270].map(deg => (
                           <button
-                            onClick={() => handleStepTrim('end', -1)}
-                            className="px-2 py-0.5 rounded bg-zinc-900 text-white hover:bg-zinc-800 cursor-pointer border border-zinc-800"
+                            key={deg}
+                            onClick={() => onUpdateTimelineItem(selectedItem.id, { rotation: deg })}
+                            className={`py-2 text-xs font-mono font-bold rounded-lg cursor-pointer transition-all ${
+                              (selectedItem.rotation || 0) === deg
+                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                                : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                            }`}
                           >
-                            -1 kl.
+                            {deg}°
                           </button>
-                          <span className="text-white font-bold">{selectedItem.sourceEnd.toFixed(2)}s</span>
-                          <button
-                            onClick={() => handleStepTrim('end', 1)}
-                            className="px-2 py-0.5 rounded bg-zinc-900 text-white hover:bg-zinc-800 cursor-pointer border border-zinc-800"
-                          >
-                            +1 kl.
-                          </button>
-                        </div>
+                        ))}
                       </div>
-                      <input
-                        type="range"
-                        min={selectedItem.sourceStart + 0.2}
-                        max={selectedClip.duration}
-                        step={0.033}
-                        value={selectedItem.sourceEnd}
-                        onChange={(e) => handleTrimChange('end', parseFloat(e.target.value))}
-                        className="w-full accent-indigo-500 cursor-pointer"
-                      />
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Clip Adjustments: Framing, Rotation, Audio */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3 border-t border-zinc-800">
-                {/* Fit Mode */}
-                <div>
-                  <label className="text-[11px] font-mono text-zinc-400 uppercase block mb-1.5 font-medium">Kadrowanie Ujęcia</label>
-                  <div className="grid grid-cols-3 gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
-                    {(['fit', 'fill', 'original'] as const).map(mode => (
-                      <button
-                        key={mode}
-                        onClick={() => onUpdateTimelineItem(selectedItem.id, { fitMode: mode })}
-                        className={`py-1.5 text-xs font-bold rounded-lg uppercase cursor-pointer transition-all ${
-                          (selectedItem.fitMode || 'fit') === mode
-                            ? 'bg-indigo-600 text-white shadow'
-                            : 'text-zinc-400 hover:text-white'
-                        }`}
-                      >
-                        {mode === 'fit' ? 'FIT' : (mode === 'fill' ? 'FILL' : 'ORIG')}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Rotation */}
-                <div>
-                  <label className="text-[11px] font-mono text-zinc-400 uppercase block mb-1.5 font-medium">Obrót Ujęcia</label>
-                  <div className="grid grid-cols-4 gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
-                    {[0, 90, 180, 270].map(deg => (
-                      <button
-                        key={deg}
-                        onClick={() => onUpdateTimelineItem(selectedItem.id, { rotation: deg })}
-                        className={`py-1.5 text-xs font-mono font-bold rounded-lg cursor-pointer transition-all ${
-                          (selectedItem.rotation || 0) === deg
-                            ? 'bg-indigo-600 text-white shadow'
-                            : 'text-zinc-400 hover:text-white'
-                        }`}
-                      >
-                        {deg}°
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Volume & Mute */}
-                <div>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <label className="text-[11px] font-mono text-zinc-400 uppercase font-medium">Głośność Ujęcia</label>
-                    <button
-                      onClick={() => onUpdateTimelineItem(selectedItem.id, { muted: !selectedItem.muted })}
-                      className={`text-xs flex items-center gap-1 font-mono cursor-pointer ${
-                        selectedItem.muted ? 'text-rose-400' : 'text-emerald-400'
-                      }`}
-                    >
-                      {selectedItem.muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-                      <span>{selectedItem.muted ? 'Wyciszone' : `${Math.round(selectedItem.volume * 100)}%`}</span>
-                    </button>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1.5}
-                    step={0.05}
-                    disabled={selectedItem.muted}
-                    value={selectedItem.volume}
-                    onChange={(e) => onUpdateTimelineItem(selectedItem.id, { volume: parseFloat(e.target.value) })}
-                    className="w-full accent-indigo-500 disabled:opacity-30 cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              {/* Row 2: Speed (Slow Motion) & Transitions */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-zinc-800">
-                {/* Speed Controls & Curve Presets */}
-                <div>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <label className="text-[11px] font-mono text-zinc-400 uppercase font-medium flex items-center gap-1.5">
-                      <Gauge className="w-3.5 h-3.5 text-indigo-400" />
-                      Prędkość & Krzywa (Speed Ramping)
+              {/* TAB 3: PRĘDKOŚĆ & RAMPING (SPEED) */}
+              {inspectorTab === 'speed' && (
+                <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-4 animate-fadeIn">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-mono text-zinc-300 uppercase font-semibold flex items-center gap-1.5">
+                      <Gauge className="w-4 h-4 text-indigo-400" />
+                      Prędkość Ujęcia (Speed Ramping)
                     </label>
-                    <span className="text-xs font-mono font-bold text-indigo-300">
+                    <span className="text-xs font-mono font-bold text-indigo-300 bg-zinc-900 px-2.5 py-1 rounded-lg border border-indigo-500/30">
                       {selectedItem.speed || 1.0}x
                     </span>
                   </div>
-                  <div className="grid grid-cols-6 gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800 mb-2">
+
+                  <div className="grid grid-cols-6 gap-1.5 bg-zinc-900 p-1.5 rounded-xl border border-zinc-800">
                     {[
                       { val: 0.25, label: '0.25x' },
                       { val: 0.5, label: '0.5x' },
@@ -2592,10 +2604,10 @@ export function MontageView({
                           const newDuration = (selectedItem.sourceEnd - selectedItem.sourceStart) / newSpeed;
                           onUpdateTimelineItem(selectedItem.id, { speed: newSpeed, duration: newDuration });
                         }}
-                        className={`py-1.5 text-xs font-mono font-bold rounded-lg cursor-pointer transition-all ${
+                        className={`py-2 text-xs font-mono font-bold rounded-lg cursor-pointer transition-all ${
                           (selectedItem.speed || 1.0) === spd.val
-                            ? 'bg-indigo-600 text-white shadow'
-                            : 'text-zinc-400 hover:text-white'
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                            : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
                         }`}
                       >
                         {spd.label}
@@ -2604,145 +2616,226 @@ export function MontageView({
                   </div>
 
                   {/* Speed Curve Presets Bar */}
-                  <div className="flex items-center gap-1">
-                    {[
-                      { id: 'hero_curve', name: 'Hero Ramp (0.5x)', speed: 0.5 },
-                      { id: 'flash_drop', name: 'Flash Drop (2.0x)', speed: 2.0 },
-                      { id: 'bullet_time', name: 'Bullet Time (0.25x)', speed: 0.25 },
-                      { id: 'hyperlapse', name: 'Hyperlapse (4.0x)', speed: 4.0 }
-                    ].map(ramp => (
+                  <div>
+                    <label className="text-[10.5px] font-mono text-zinc-400 uppercase block mb-1.5">Kinowe Krzywe Prędkości</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { id: 'hero_curve', name: 'Hero Ramp (0.5x)', speed: 0.5, desc: 'Dramatyczne zwolnienie' },
+                        { id: 'flash_drop', name: 'Flash Drop (2.0x)', speed: 2.0, desc: 'Dynamiczne przyspieszenie' },
+                        { id: 'bullet_time', name: 'Bullet Time (0.25x)', speed: 0.25, desc: 'Ultra slow-motion' },
+                        { id: 'hyperlapse', name: 'Hyperlapse (4.0x)', speed: 4.0, desc: 'Płynny przeskok czasu' }
+                      ].map(ramp => (
+                        <button
+                          key={ramp.id}
+                          onClick={() => {
+                            const newSpeed = ramp.speed;
+                            const newDuration = (selectedItem.sourceEnd - selectedItem.sourceStart) / newSpeed;
+                            onUpdateTimelineItem(selectedItem.id, { 
+                              speed: newSpeed, 
+                              duration: newDuration,
+                              speedRampPreset: ramp.id as any 
+                            });
+                          }}
+                          className="p-2.5 bg-zinc-900 hover:bg-indigo-950/60 border border-zinc-800 hover:border-indigo-500/40 rounded-xl transition text-left cursor-pointer"
+                        >
+                          <div className="text-xs font-semibold text-zinc-200">{ramp.name}</div>
+                          <div className="text-[10px] text-zinc-500 mt-0.5">{ramp.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: KOLOR & PIĘKNO PRO (COLOR & BEAUTY) */}
+              {inspectorTab === 'color' && (
+                <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-4 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-amber-300 uppercase font-mono flex items-center gap-2">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      Studio Efektów Piękna & Korekcja Barwna
+                    </h4>
+                    <button
+                      onClick={() => setIsBeautyStudioOpen(!isBeautyStudioOpen)}
+                      className="px-3 py-1 rounded-lg text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 transition cursor-pointer"
+                    >
+                      {isBeautyStudioOpen ? 'Zwiń Panel Pełny' : 'Otwórz Studio Pełne 4K'}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {(Object.keys(BEAUTY_PRESETS) as BeautyPreset[]).slice(0, 8).map(key => {
+                      const p = BEAUTY_PRESETS[key];
+                      const isSelected = beautyGrade.enabled && beautyGrade.preset === key;
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => handleApplyBeautyPreset(key)}
+                          className={`p-2.5 rounded-xl border flex flex-col items-center text-center gap-1 transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-gradient-to-b from-amber-500/25 to-indigo-500/20 border-amber-400 text-white shadow-lg'
+                              : 'bg-zinc-900 hover:bg-zinc-850 border-zinc-800 text-zinc-300'
+                          }`}
+                        >
+                          <span className="text-base">{p.icon}</span>
+                          <span className="font-bold text-[11px] truncate w-full">{p.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 5: AUDIO & DŹWIĘK */}
+              {inspectorTab === 'audio' && (
+                <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-4 animate-fadeIn">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-mono text-zinc-300 uppercase font-semibold flex items-center gap-1.5">
+                      <Volume2 className="w-4 h-4 text-emerald-400" />
+                      Głośność Ścieżki Ujęcia
+                    </label>
+                    <button
+                      onClick={() => onUpdateTimelineItem(selectedItem.id, { muted: !selectedItem.muted })}
+                      className={`text-xs px-2.5 py-1 rounded-lg font-mono font-bold flex items-center gap-1.5 cursor-pointer border ${
+                        selectedItem.muted 
+                          ? 'bg-rose-950/60 text-rose-300 border-rose-800/60' 
+                          : 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60'
+                      }`}
+                    >
+                      {selectedItem.muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                      <span>{selectedItem.muted ? 'Wyciszone' : `${Math.round(selectedItem.volume * 100)}%`}</span>
+                    </button>
+                  </div>
+
+                  <input
+                    type="range"
+                    min={0}
+                    max={1.5}
+                    step={0.05}
+                    disabled={selectedItem.muted}
+                    value={selectedItem.volume}
+                    onChange={(e) => onUpdateTimelineItem(selectedItem.id, { volume: parseFloat(e.target.value) })}
+                    className="w-full accent-emerald-500 disabled:opacity-30 cursor-pointer h-2 bg-zinc-800 rounded-lg"
+                  />
+                </div>
+              )}
+
+              {/* TAB 6: PLANSZE TYTUŁOWE & PRZEJŚCIA (TITLES & TRANSITIONS) */}
+              {inspectorTab === 'title' && (
+                <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-4 animate-fadeIn">
+                  {/* Transition In */}
+                  <div>
+                    <label className="text-[11px] font-mono text-zinc-400 uppercase block mb-1.5 font-semibold flex items-center gap-1.5">
+                      <Wand2 className="w-3.5 h-3.5 text-indigo-400" />
+                      Przejście Wejściowe (Transition)
+                    </label>
+                    <div className="grid grid-cols-5 gap-1.5 bg-zinc-900 p-1.5 rounded-xl border border-zinc-800">
+                      {[
+                        { id: 'cut', label: 'Cięcie' },
+                        { id: 'dissolve', label: 'Przenikanie' },
+                        { id: 'dip_black', label: 'Czerń' },
+                        { id: 'dip_white', label: 'Biel' },
+                        { id: 'light_leak', label: 'Błysk' }
+                      ].map(tr => (
+                        <button
+                          key={tr.id}
+                          onClick={() => onUpdateTimelineItem(selectedItem.id, { transitionIn: tr.id as TransitionType })}
+                          className={`py-2 text-xs font-bold rounded-lg uppercase cursor-pointer transition-all ${
+                            (selectedItem.transitionIn || 'cut') === tr.id
+                              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                              : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                          }`}
+                        >
+                          {tr.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Title Card Section */}
+                  <div className="pt-3 border-t border-zinc-800">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Type className="w-4 h-4 text-indigo-400" />
+                        <span className="text-xs font-bold text-white uppercase font-mono">
+                          Plansza Tytułowa / Podpis Sceny przed Klipem
+                        </span>
+                      </div>
                       <button
-                        key={ramp.id}
                         onClick={() => {
-                          const newSpeed = ramp.speed;
-                          const newDuration = (selectedItem.sourceEnd - selectedItem.sourceStart) / newSpeed;
-                          onUpdateTimelineItem(selectedItem.id, { 
-                            speed: newSpeed, 
-                            duration: newDuration,
-                            speedRampPreset: ramp.id as any 
+                          const enabled = !selectedItem.titleCard?.enabled;
+                          onUpdateTimelineItem(selectedItem.id, {
+                            titleCard: {
+                              enabled,
+                              text: selectedItem.titleCard?.text || selectedClip.name.replace(/\.[^/.]+$/, ""),
+                              subtitle: selectedItem.titleCard?.subtitle || 'Master Cut',
+                              duration: selectedItem.titleCard?.duration || 3.0,
+                              style: selectedItem.titleCard?.style || 'modern_bold',
+                              backgroundColor: selectedItem.titleCard?.backgroundColor || '#09090B'
+                            }
                           });
                         }}
-                        className="flex-1 py-1 px-1 bg-zinc-950 hover:bg-indigo-950/60 border border-zinc-800 hover:border-indigo-500/40 text-[9px] font-mono text-zinc-400 hover:text-indigo-200 rounded-md transition truncate text-center cursor-pointer"
-                        title={`Zastosuj krzywą prędkości ${ramp.name}`}
-                      >
-                        {ramp.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Transitions */}
-                <div>
-                  <label className="text-[11px] font-mono text-zinc-400 uppercase block mb-1.5 font-medium flex items-center gap-1.5">
-                    <Wand2 className="w-3.5 h-3.5 text-indigo-400" />
-                    Przejście Wejściowe (Transition)
-                  </label>
-                  <div className="grid grid-cols-5 gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
-                    {[
-                      { id: 'cut', label: 'Cięcie' },
-                      { id: 'dissolve', label: 'Przenik.' },
-                      { id: 'dip_black', label: 'Czerń' },
-                      { id: 'dip_white', label: 'Biel' },
-                      { id: 'light_leak', label: 'Błysk' }
-                    ].map(tr => (
-                      <button
-                        key={tr.id}
-                        onClick={() => onUpdateTimelineItem(selectedItem.id, { transitionIn: tr.id as TransitionType })}
-                        className={`py-1.5 text-[11px] font-bold rounded-lg uppercase cursor-pointer transition-all ${
-                          (selectedItem.transitionIn || 'cut') === tr.id
-                            ? 'bg-indigo-600 text-white shadow'
-                            : 'text-zinc-400 hover:text-white'
+                        className={`px-3 py-1 text-xs rounded-lg font-mono font-bold transition-all cursor-pointer ${
+                          selectedItem.titleCard?.enabled
+                            ? 'bg-indigo-600 text-white shadow-md'
+                            : 'bg-zinc-900 text-zinc-400 hover:text-white'
                         }`}
                       >
-                        {tr.label}
+                        {selectedItem.titleCard?.enabled ? 'WŁĄCZONA' : 'WYŁĄCZONA'}
                       </button>
-                    ))}
+                    </div>
+
+                    {selectedItem.titleCard?.enabled && (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                        <div>
+                          <label className="text-[10px] font-mono text-zinc-400 uppercase block mb-1 font-semibold">Tytuł Główny</label>
+                          <input
+                            type="text"
+                            value={selectedItem.titleCard.text}
+                            onChange={(e) => onUpdateTimelineItem(selectedItem.id, {
+                              titleCard: { ...selectedItem.titleCard!, text: e.target.value }
+                            })}
+                            placeholder="np. Tytuł Sceny / Master Cut"
+                            className="w-full bg-zinc-900 border border-zinc-700/80 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-mono text-zinc-400 uppercase block mb-1 font-semibold">Podtytuł / Opis</label>
+                          <input
+                            type="text"
+                            value={selectedItem.titleCard.subtitle || ''}
+                            onChange={(e) => onUpdateTimelineItem(selectedItem.id, {
+                              titleCard: { ...selectedItem.titleCard!, subtitle: e.target.value }
+                            })}
+                            placeholder="np. 2026 • Reżyseria i Montaż"
+                            className="w-full bg-zinc-900 border border-zinc-700/80 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-mono text-zinc-400 uppercase block mb-1 font-semibold">Styl Planszy</label>
+                          <select
+                            value={selectedItem.titleCard.style}
+                            onChange={(e) => onUpdateTimelineItem(selectedItem.id, {
+                              titleCard: { ...selectedItem.titleCard!, style: e.target.value as any }
+                            })}
+                            className="w-full bg-zinc-900 border border-zinc-700/80 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                          >
+                            <option value="modern_bold">⚡ Nowoczesny Bold</option>
+                            <option value="cinematic">✦ Kinowy Noir</option>
+                            <option value="studio_slate">🎬 Studio Slate (Klaps)</option>
+                            <option value="minimalist">◻ Minimalistyczny Clean</option>
+                            <option value="classic">◈ Klasyczny Szeryfowy</option>
+                            <option value="cyber_neon">❇ Cyber Neon</option>
+                            <option value="credits">🏁 Napisy Końcowe</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-
-              {/* Row 3: Title Card Overlay on Clip */}
-              <div className="pt-3 border-t border-zinc-800 bg-zinc-950 p-4 rounded-xl border border-zinc-800">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Type className="w-4 h-4 text-indigo-400" />
-                    <span className="text-xs font-bold text-white uppercase font-mono">
-                      Plansza Tytułowa / Podpis Sceny przed Klipem
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      const enabled = !selectedItem.titleCard?.enabled;
-                      onUpdateTimelineItem(selectedItem.id, {
-                        titleCard: {
-                          enabled,
-                          text: selectedItem.titleCard?.text || selectedClip.name.replace(/\.[^/.]+$/, ""),
-                          subtitle: selectedItem.titleCard?.subtitle || 'Master Cut',
-                          duration: selectedItem.titleCard?.duration || 3.0,
-                          style: selectedItem.titleCard?.style || 'modern_bold',
-                          backgroundColor: selectedItem.titleCard?.backgroundColor || '#09090B'
-                        }
-                      });
-                    }}
-                    className={`px-3 py-1 text-xs rounded-lg font-mono font-bold transition-all cursor-pointer ${
-                      selectedItem.titleCard?.enabled
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-zinc-900 text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    {selectedItem.titleCard?.enabled ? 'WŁĄCZONA' : 'WYŁĄCZONA'}
-                  </button>
-                </div>
-
-                {selectedItem.titleCard?.enabled && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                    <div>
-                      <label className="text-[10px] font-mono text-zinc-400 uppercase block mb-1">Tytuł Główny</label>
-                      <input
-                        type="text"
-                        value={selectedItem.titleCard.text}
-                        onChange={(e) => onUpdateTimelineItem(selectedItem.id, {
-                          titleCard: { ...selectedItem.titleCard!, text: e.target.value }
-                        })}
-                        placeholder="np. Tytuł Sceny / Master Cut"
-                        className="w-full bg-zinc-900 border border-zinc-700/80 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-mono text-zinc-400 uppercase block mb-1">Podtytuł / Opis</label>
-                      <input
-                        type="text"
-                        value={selectedItem.titleCard.subtitle || ''}
-                        onChange={(e) => onUpdateTimelineItem(selectedItem.id, {
-                          titleCard: { ...selectedItem.titleCard!, subtitle: e.target.value }
-                        })}
-                        placeholder="np. 2026 • Reżyseria i Montaż"
-                        className="w-full bg-zinc-900 border border-zinc-700/80 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-mono text-zinc-400 uppercase block mb-1">Styl Planszy</label>
-                      <select
-                        value={selectedItem.titleCard.style}
-                        onChange={(e) => onUpdateTimelineItem(selectedItem.id, {
-                          titleCard: { ...selectedItem.titleCard!, style: e.target.value as any }
-                        })}
-                        className="w-full bg-zinc-900 border border-zinc-700/80 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      >
-                        <option value="modern_bold">⚡ Nowoczesny Bold</option>
-                        <option value="cinematic">✦ Kinowy Noir</option>
-                        <option value="studio_slate">🎬 Studio Slate (Klaps)</option>
-                        <option value="minimalist">◻ Minimalistyczny Clean</option>
-                        <option value="classic">◈ Klasyczny Szeryfowy</option>
-                        <option value="cyber_neon">❇ Cyber Neon</option>
-                        <option value="credits">🏁 Napisy Końcowe</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           )}
         </>
