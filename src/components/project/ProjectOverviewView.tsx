@@ -109,31 +109,34 @@ export const ProjectOverviewView: React.FC<ProjectOverviewViewProps> = ({
               </span>
             </h1>
 
-            <div className="flex flex-wrap items-center gap-2.5 text-xs text-zinc-400 pt-1 font-mono">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400 pt-1 font-mono">
               <span className="text-zinc-200 font-semibold">
                 {totalClips} {totalClips === 1 ? 'ujęcie' : (totalClips < 5 ? 'ujęcia' : 'ujęć')}
               </span>
-              <span className="text-zinc-600">·</span>
-              <span className="text-indigo-400 font-semibold">
-                ⏱️ {formatDuration(totalDurationSec)} ({Math.round(totalDurationSec)}s)
+              <span className="text-zinc-600" aria-hidden="true">·</span>
+              <span className="text-indigo-400 font-semibold flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" />
+                <span>{formatDuration(totalDurationSec)} ({Math.round(totalDurationSec)}s)</span>
               </span>
               {totalSourceSizeBytes > 0 && (
                 <>
-                  <span className="text-zinc-600">·</span>
-                  <span className="text-cyan-400">
-                    📁 Źródła: {formatFileSize(totalSourceSizeBytes)}
+                  <span className="text-zinc-600" aria-hidden="true">·</span>
+                  <span className="text-cyan-400 flex items-center gap-1">
+                    <HardDrive className="w-3.5 h-3.5" />
+                    <span>Źródła: {formatFileSize(totalSourceSizeBytes)}</span>
                   </span>
                 </>
               )}
               {estimatedExportMb > 0 && (
                 <>
-                  <span className="text-zinc-600">·</span>
-                  <span className="text-emerald-400">
-                    💾 MP4: ~{estimatedExportMb >= 1000 ? `${(estimatedExportMb / 1024).toFixed(2)} GB` : `${estimatedExportMb} MB`}
+                  <span className="text-zinc-600" aria-hidden="true">·</span>
+                  <span className="text-emerald-400 flex items-center gap-1">
+                    <Film className="w-3.5 h-3.5" />
+                    <span>MP4: ~{estimatedExportMb >= 1000 ? `${(estimatedExportMb / 1024).toFixed(2)} GB` : `${estimatedExportMb} MB`}</span>
                   </span>
                 </>
               )}
-              <span className="text-zinc-600">·</span>
+              <span className="text-zinc-600" aria-hidden="true">·</span>
               <span className="text-purple-300">GPU WebCodecs 4K</span>
             </div>
           </div>

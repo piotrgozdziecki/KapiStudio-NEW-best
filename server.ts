@@ -1580,7 +1580,7 @@ async function startServer() {
     ? distPath
     : (fs.existsSync(path.join(buildPath, 'index.html')) ? buildPath : null);
 
-  const isProduction = process.env.NODE_ENV === 'production';
+  const isProduction = process.env.NODE_ENV === 'production' || !!staticPath;
 
   if (isProduction && staticPath) {
     console.log(`[Production] Serving static files from: ${staticPath}`);
@@ -1593,7 +1593,7 @@ async function startServer() {
     console.log('[Dev/Live] Mounting Vite SPA middlewares');
     try {
       const vite = await createViteServer({
-        server: { middlewareMode: true, hmr: false },
+        server: { middlewareMode: true, hmr: false, ws: false },
         appType: 'spa'
       });
       app.use(vite.middlewares);
@@ -1608,8 +1608,12 @@ async function startServer() {
     }
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`KAPI-STUDIO server running on port ${PORT} (mode: ${process.env.NODE_ENV || 'development'})`);
+  });
+
+  server.on('error', (err: any) => {
+    console.error('[Server] Fatal server listen error:', err);
   });
 }
 

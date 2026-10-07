@@ -870,8 +870,9 @@ export function MediaManager({
                 <span>Biblioteka Mediów Pro</span>
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               </span>
-              <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-[10px] font-mono font-bold text-[#00e5cc]">
-                GPU Multi-Threaded ⚡
+              <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-[10px] font-mono font-bold text-[#00e5cc] flex items-center gap-1">
+                <Zap className="w-3 h-3 text-[#00e5cc]" />
+                <span>GPU Multi-Threaded</span>
               </span>
             </div>
             <p className="text-xs text-zinc-400 max-w-xl leading-relaxed">
