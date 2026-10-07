@@ -480,20 +480,20 @@ export function PreviewPlayer({
       </div>
 
       {/* Top Floating Control Bar (Color Grade LUT, CinemaScope, Scale Mode & Zoom) */}
-      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-40 flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity bg-black/85 backdrop-blur-md px-2 py-1.5 rounded-xl border border-white/15 shadow-2xl max-w-[calc(100%-1rem)] flex-wrap">
+      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-40 flex items-center gap-3 opacity-90 group-hover:opacity-100 transition-opacity bg-black/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 shadow-2xl max-w-[calc(100%-1rem)] flex-wrap">
         
         {/* Cinematic Look / LUT Selector */}
         <div className="relative">
           <button
             onClick={() => setIsLutDropdownOpen(!isLutDropdownOpen)}
-            className={`px-2 py-1 rounded-lg text-[10px] font-mono flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold font-sans flex items-center gap-2 transition-all cursor-pointer ${
               activeColorGrade !== 'none'
                 ? 'bg-gradient-to-r from-[#D4AF37] to-[#E5C158] text-black font-bold shadow-md'
                 : 'text-[#C5BBA6] hover:text-white bg-[#1A1813] border border-[#2B271E]'
             }`}
             title="Wybierz profil kolorystyczny (LUT Cinema Look)"
           >
-            <Palette className="w-3 h-3" />
+            <Palette className="w-5 h-5" />
             <span className="hidden xs:inline">{currentGradeItem.name}</span>
           </button>
 
@@ -527,7 +527,7 @@ export function PreviewPlayer({
                         </div>
                       </div>
                     </div>
-                    {isSelected && <Check className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" />}
+                    {isSelected && <Check className="w-5 h-5 text-[#D4AF37] shrink-0" />}
                   </button>
                 );
               })}
@@ -538,34 +538,34 @@ export function PreviewPlayer({
         {/* CinemaScope 2.39:1 Letterbox Toggle */}
         <button
           onClick={handleToggleCinemascope}
-          className={`px-1.5 sm:px-2 py-1 rounded-lg text-[10px] font-mono flex items-center gap-1 transition-all cursor-pointer ${
+          className={`px-2.5 py-1 rounded-lg text-xs font-semibold font-sans flex items-center gap-2 transition-all cursor-pointer ${
             isCinemascope
               ? 'bg-[#2E2716] text-[#D4AF37] border border-[#D4AF37]/60 font-bold shadow-sm'
               : 'text-[#AAA69D] hover:text-white bg-[#1A1813] border border-[#2B271E]'
           }`}
           title="Przełącz format kinowy 2.39:1 (CinemaScope Paszport)"
         >
-          <Film className="w-3 h-3 text-[#D4AF37]" />
+          <Film className="w-5 h-5 text-[#D4AF37]" />
           <span className="hidden sm:inline">2.39:1</span>
         </button>
 
-        <div className="h-3 w-px bg-white/20 mx-0.5" />
+        <div className="h-4 w-px bg-white/20 mx-0.5" />
 
         {/* Aspect Ratio / Autoscaling modes */}
         <button
           onClick={() => setScaleMode('fit')}
-          className={`px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] font-mono flex items-center gap-1 transition-colors cursor-pointer ${
+          className={`px-2 py-1 rounded-lg text-xs font-semibold font-sans flex items-center gap-2 transition-colors cursor-pointer ${
             scaleMode === 'fit' ? 'bg-[#D4AF37] text-black font-bold' : 'text-[#AAA69D] hover:text-white'
           }`}
           title="Autoskalowanie (Dopasuj do ekranu)"
         >
-          <Scaling className="w-3 h-3" />
+          <Scaling className="w-5 h-5" />
           <span className="hidden xs:inline">Auto</span>
         </button>
 
         <button
           onClick={() => setScaleMode('fill')}
-          className={`px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] font-mono flex items-center gap-1 transition-colors cursor-pointer ${
+          className={`px-2 py-1 rounded-lg text-xs font-semibold font-sans flex items-center gap-2 transition-colors cursor-pointer ${
             scaleMode === 'fill' ? 'bg-[#D4AF37] text-black font-bold' : 'text-[#AAA69D] hover:text-white'
           }`}
           title="Wypełnij kadr (Cover)"
@@ -575,21 +575,21 @@ export function PreviewPlayer({
 
         <button
           onClick={() => setScaleMode(scaleMode === '16:9' ? '9:16' : '16:9')}
-          className={`px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] font-mono flex items-center gap-1 transition-colors cursor-pointer ${
+          className={`px-2 py-1 rounded-lg text-xs font-semibold font-sans flex items-center gap-2 transition-colors cursor-pointer ${
             scaleMode === '16:9' || scaleMode === '9:16' ? 'bg-[#1F1D17] text-[#D4AF37] border border-[#D4AF37]/40' : 'text-[#AAA69D] hover:text-white'
           }`}
           title="Przełącz format 16:9 / 9:16"
         >
-          {scaleMode === '9:16' ? <Smartphone className="w-3 h-3 text-[#D4AF37]" /> : <Monitor className="w-3 h-3 text-[#D4AF37]" />}
-          <span className="text-[9px] sm:text-[10px]">{scaleMode === '9:16' ? '9:16' : '16:9'}</span>
+          {scaleMode === '9:16' ? <Smartphone className="w-5 h-5 text-[#D4AF37]" /> : <Monitor className="w-5 h-5 text-[#D4AF37]" />}
+          <span className="text-xs font-semibold">{scaleMode === '9:16' ? '9:16' : '16:9'}</span>
         </button>
 
-        <div className="h-3 w-px bg-white/20 mx-0.5" />
+        <div className="h-4 w-px bg-white/20 mx-0.5" />
 
         {/* Zoom */}
         <button
           onClick={() => setZoomLevel(prev => prev >= 150 ? 100 : prev + 25)}
-          className="px-1 py-0.5 text-[10px] font-mono text-[#AAA69D] hover:text-white cursor-pointer"
+          className="px-1.5 py-1 text-xs font-mono font-semibold text-[#AAA69D] hover:text-white cursor-pointer"
           title="Powiększenie podglądu"
         >
           {zoomLevel}%

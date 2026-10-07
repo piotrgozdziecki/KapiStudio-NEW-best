@@ -37,7 +37,7 @@ import { PWAInstallButton } from '../common/PWAInstallButton';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { GoogleDriveIcon } from '../GoogleDriveModal';
-import capybaraForkliftImg from '../../assets/capybara-forklift.jpg';
+import { Cpu, Zap } from 'lucide-react';
 
 function GoogleIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
   return (
@@ -213,7 +213,7 @@ export function StudioLayout({
   isDbConnected = true 
 }: StudioLayoutProps) {
   
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(activeTab === 'montage');
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(projectName);
@@ -458,7 +458,7 @@ export function StudioLayout({
                 <button
                   onClick={onOpenAiAssistant}
                   className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-2.5' : 'justify-start gap-3 px-3 py-2'} rounded-xl text-xs text-zinc-400 hover:text-white hover:bg-zinc-800/60 transition-colors cursor-pointer`}
-                  title="Inteligentny Asystent Sekwencji i Cięć"
+                  title="Asystent Sekwencji i Cięć"
                 >
                   <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />
                   {!isSidebarCollapsed && <span className="truncate">Asystent Sekwencji</span>}
@@ -541,45 +541,32 @@ export function StudioLayout({
               </button>
             </div>
           </div>
-          {/* Capybara Forklift Mascot Studio Glassmorphism Badge */}
+          {/* Pro WebGL2 GPU Engine Status Badge */}
           {!isSidebarCollapsed ? (
-            <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/20 via-zinc-900/90 to-indigo-500/20 border border-amber-500/35 shadow-xl backdrop-blur-xl flex items-center gap-3 relative overflow-hidden group">
+            <div className="p-3 rounded-2xl bg-[#18181b] border border-[#27272a] shadow-xl backdrop-blur-xl flex items-center gap-3 relative overflow-hidden group">
               <div className="relative shrink-0">
-                <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-amber-500/60 shadow-lg shadow-amber-500/20 transform transition-transform group-hover:scale-105">
-                  <img 
-                    src={capybaraForkliftImg} 
-                    alt="Kapibara na wózku widłowym" 
-                    className="w-full h-full object-cover"
-                  />
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-indigo-500/20 border border-cyan-500/40 flex items-center justify-center text-[#00e5cc] shadow-inner">
+                  <Cpu className="w-5 h-5 text-[#00e5cc]" />
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-black flex items-center justify-center shadow">
-                  <Truck className="w-2.5 h-2.5" />
+                <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 text-black flex items-center justify-center shadow">
+                  <Zap className="w-2 h-2 text-black fill-black" />
                 </div>
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-xs font-extrabold text-amber-300 truncate">Kapi Operator</span>
+                  <span className="text-xs font-bold text-zinc-100 truncate">Pro Video Engine</span>
                   <span className="flex h-2 w-2 relative shrink-0">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
                 </div>
-                <span className="text-[10px] text-zinc-300 block truncate font-mono mt-0.5">Wózek 4K • Zero-Leak</span>
+                <span className="text-[10px] text-zinc-400 block truncate font-mono mt-0.5">WebGL2 • GPU 4K Ready</span>
               </div>
             </div>
           ) : (
-            <div className="flex justify-center" title="Kapi Operator na wózku widłowym • Strażnik pamięci VRAM i 4K">
-              <div className="relative group">
-                <div className="w-9 h-9 rounded-xl overflow-hidden border-2 border-amber-500/50 shadow-lg shadow-amber-500/20">
-                  <img 
-                    src={capybaraForkliftImg} 
-                    alt="Kapibara" 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-500 text-black flex items-center justify-center">
-                  <Truck className="w-2 h-2" />
-                </div>
+            <div className="flex justify-center" title="Pro Video Engine • GPU 4K Accelerated">
+              <div className="w-8 h-8 rounded-xl bg-[#18181b] border border-[#27272a] flex items-center justify-center text-[#00e5cc]">
+                <Cpu className="w-4 h-4" />
               </div>
             </div>
           )}
@@ -594,18 +581,47 @@ export function StudioLayout({
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
-        {/* Top Header Bar (h-11 Linear/Raycast Style) */}
-        <header className="h-11 w-full border-b border-zinc-800/60 bg-zinc-950/80 backdrop-blur-md px-3 flex items-center justify-between shrink-0 z-40 gap-3">
-          {/* Left: Project title & Cloud Sync + GPU Badge */}
-          <div className="flex items-center gap-2.5 min-w-0">
+        {/* Top Header Bar */}
+        <header className="h-12 w-full border-b border-[#27272a] bg-[#18181b] px-3 sm:px-4 flex items-center justify-between shrink-0 z-40 gap-4 select-none">
+          {/* Left: Kapi-Studio Logo + Menu dropdown + Auto-Save Status */}
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <button
               onClick={() => setIsMobileDrawerOpen(true)}
               className="md:hidden p-1.5 rounded-lg text-zinc-300 hover:text-white bg-zinc-900 border border-zinc-800 cursor-pointer"
               title="Otwórz menu"
             >
-              <Menu className="w-3.5 h-3.5" />
+              <Menu className="w-5 h-5" />
             </button>
 
+            {/* Kapi-Studio Logo & Menu */}
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center text-black font-extrabold shadow-sm">
+                <Scissors className="w-5 h-5 text-white" />
+              </div>
+              <span className="font-bold text-xs tracking-tight text-white hidden sm:inline font-sans">Kapi-Studio</span>
+              <button 
+                onClick={() => setIsMobileDrawerOpen(prev => !prev)}
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#27272a] hover:bg-[#323238] text-xs font-semibold text-zinc-300 transition-colors cursor-pointer"
+              >
+                <span>Menu</span>
+                <span className="text-[10px] text-zinc-400">▾</span>
+              </button>
+            </div>
+
+            {/* Auto-Saved Status */}
+            <div 
+              className="hidden lg:flex items-center gap-2 text-xs text-zinc-400 font-sans"
+              title={autoSaveStatus === 'saved' ? 'Wszystkie zmiany zapisane w chmurze' : 'Zapisywanie...'}
+            >
+              <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(0,229,204,0.6)]" />
+              <span className="text-zinc-400 font-medium text-xs">
+                {autoSaveStatus === 'saving' ? 'Zapisywanie...' : 'Zapisano w chmurze'}
+              </span>
+            </div>
+          </div>
+
+          {/* Center: Project Title (Editable) */}
+          <div className="flex items-center justify-center min-w-0 flex-1 max-w-xs sm:max-w-md">
             {isEditingName ? (
               <input
                 type="text"
@@ -614,102 +630,66 @@ export function StudioLayout({
                 onBlur={handleFinishNameEdit}
                 onKeyDown={(e) => e.key === 'Enter' && handleFinishNameEdit()}
                 autoFocus
-                className="bg-zinc-900 border border-indigo-500 rounded px-2 py-0.5 text-xs text-white focus:outline-none w-36 sm:w-56"
+                className="bg-[#27272a] border border-cyan-500 rounded-lg px-3 py-1 text-xs text-white focus:outline-none w-52 text-center font-semibold font-sans"
               />
             ) : (
               <div 
                 onClick={() => setIsEditingName(true)}
-                className="flex items-center gap-1.5 group cursor-pointer min-w-0"
+                className="flex items-center gap-2 px-3 py-1 rounded-lg hover:bg-[#27272a] cursor-pointer transition-colors max-w-full group"
                 title="Kliknij, aby zmienić nazwę projektu"
               >
-                <h1 className="text-xs font-semibold text-zinc-100 truncate group-hover:text-white transition-colors max-w-[140px] sm:max-w-[220px]">
-                  {projectName || 'Projekt bez nazwy'}
+                <h1 className="text-xs font-semibold text-zinc-200 truncate group-hover:text-white transition-colors font-sans">
+                  {projectName || 'Nowy Projekt'}
                 </h1>
-                <Edit2 className="w-2.5 h-2.5 text-zinc-500 group-hover:text-zinc-300 transition-colors shrink-0" />
+                <Edit2 className="w-4 h-4 text-zinc-500 group-hover:text-zinc-300 transition-colors shrink-0" />
               </div>
             )}
-
-            {/* Cloud Sync Status */}
-            <div 
-              className="hidden sm:flex items-center gap-1 text-[10px] font-mono text-zinc-500 shrink-0"
-              title={autoSaveStatus === 'saved' ? 'Synchronizacja Firestore aktywna' : 'Zapisywanie w chmurze'}
-            >
-              {autoSaveStatus === 'saving' ? (
-                <Loader2 className="w-2.5 h-2.5 text-indigo-400 animate-spin" />
-              ) : autoSaveStatus === 'saved' ? (
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
-              ) : (
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-              )}
-              <span className="text-zinc-400">{autoSaveStatus === 'saving' ? 'Zapis...' : 'Chmura OK'}</span>
-            </div>
-
-            {/* GPU Hardware Acceleration Badge */}
-            <div className="hidden md:flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[10px] font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>GPU 4K</span>
-            </div>
           </div>
 
-          {/* Center: Command Palette Trigger (Cmd+K) */}
-          <div className="flex items-center justify-center">
-            {/* Desktop / Tablet expandable pill */}
+          {/* Right: PWA Install, Shortcut [Cmd+K], Undo/Redo, Export Button */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Direct PWA Install / Download App Button */}
+            <PWAInstallButton variant="header" />
+
+            {/* Shortcut Trigger (Cmd+K) */}
             <button
               onClick={onOpenCommandPalette}
-              className="hidden sm:flex w-full min-w-[180px] max-w-[240px] md:max-w-[280px] bg-zinc-900/80 hover:bg-zinc-850 border border-zinc-800 text-zinc-400 hover:text-zinc-200 text-xs px-3 py-1 rounded-lg items-center justify-between transition-all cursor-pointer shadow-inner group"
-              title="Otwórz Paletę Poleceń (Cmd+K / Ctrl+K)"
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-[#27272a] hover:bg-[#323238] border border-[#3f3f46]/50 rounded-lg text-zinc-300 hover:text-white text-xs font-semibold font-sans transition-colors cursor-pointer"
+              title="Skróty i paleta poleceń (Cmd+K / Ctrl+K)"
             >
-              <div className="flex items-center gap-2">
-                <Scissors className="w-3 h-3 text-indigo-400 group-hover:text-indigo-300 transition-colors" />
-                <span className="text-[11px] truncate">Szukaj poleceń...</span>
-              </div>
-              <kbd className="text-[9px] font-mono bg-zinc-800 border border-zinc-700/60 px-1.5 py-0.2 rounded text-zinc-400">
-                ⌘K
-              </kbd>
+              <Keyboard className="w-5 h-5 text-cyan-400" />
+              <span>Polecenia (⌘K)</span>
             </button>
 
-            {/* Mobile icon-only trigger (prevents topbar element collision) */}
-            <button
-              onClick={onOpenCommandPalette}
-              className="sm:hidden p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-indigo-400 hover:text-white cursor-pointer"
-              title="Paleta Poleceń (Cmd+K)"
-            >
-              <Scissors className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Right: Undo/Redo & High-Contrast Export Button */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Undo / Redo controls */}
-            <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-lg p-0.5">
+            {/* Undo / Redo */}
+            <div className="hidden xs:flex items-center bg-[#27272a] border border-[#3f3f46]/40 rounded-lg p-1 gap-1">
               <button
                 onClick={onUndo}
                 disabled={!canUndo}
-                className="p-1 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-30 cursor-pointer transition-colors"
+                className="p-1 rounded text-zinc-400 hover:text-white hover:bg-[#323238] disabled:opacity-30 cursor-pointer transition-colors"
                 title="Cofnij (Ctrl+Z)"
               >
-                <Undo2 className="w-3 h-3" />
+                <Undo2 className="w-5 h-5" />
               </button>
               <button
                 onClick={onRedo}
                 disabled={!canRedo}
-                className="p-1 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-30 cursor-pointer transition-colors"
+                className="p-1 rounded text-zinc-400 hover:text-white hover:bg-[#323238] disabled:opacity-30 cursor-pointer transition-colors"
                 title="Ponów (Ctrl+Y)"
               >
-                <Redo2 className="w-3 h-3" />
+                <Redo2 className="w-5 h-5" />
               </button>
             </div>
 
-            {/* High-Contrast Export Button (Linear Style) */}
-            {activeTab !== 'export' && (
-              <button
-                onClick={() => onTabChange('export')}
-                className="bg-zinc-100 hover:bg-white text-zinc-950 font-semibold text-xs px-3 py-1.5 rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <Play className="w-3 h-3 fill-zinc-950" />
-                <span>Eksport</span>
-              </button>
-            )}
+            {/* Studio Turquoise Export Button */}
+            <button
+              onClick={() => onTabChange('export')}
+              className="bg-[#00e5cc] hover:bg-[#14f3db] text-black font-bold text-xs px-3.5 py-1.5 rounded-lg shadow-md shadow-cyan-950/40 active:scale-95 transition-all flex items-center gap-2 cursor-pointer font-sans"
+              title="Wyrenderuj i pobierz plik MP4 (GPU 4K WebCodecs)"
+            >
+              <Download className="w-5 h-5 text-black stroke-[2.5]" />
+              <span className="font-bold">Eksport</span>
+            </button>
           </div>
         </header>
 
@@ -751,7 +731,7 @@ export function StudioLayout({
         )}
 
         {/* Main Work Area without any page-level scrolling */}
-        <main className="flex-1 w-full h-full overflow-hidden p-0 relative flex flex-col">
+        <main className="flex-1 w-full h-full overflow-hidden p-0 relative flex flex-col pb-16 md:pb-0">
           {children}
         </main>
       </div>

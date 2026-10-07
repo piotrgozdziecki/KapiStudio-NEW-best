@@ -225,7 +225,7 @@ export function AutoCaptionsModal({
                 </span>
               </h2>
               <p className="text-xs text-[#949B96] mt-0.5">
-                Generuj automatyczne napisy kinowe, animowane pop-up karaoke (CapCut style) oraz importuj pliki SRT
+                Generuj automatyczne napisy kinowe, animowane pop-up karaoke oraz importuj pliki SRT
               </p>
             </div>
           </div>

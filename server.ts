@@ -1575,7 +1575,10 @@ app.use((err: any, req: any, res: any, next: any) => {
 
 async function startServer() {
   const distPath = path.join(process.cwd(), 'dist');
-  const staticPath = fs.existsSync(path.join(distPath, 'index.html')) ? distPath : null;
+  const buildPath = path.join(process.cwd(), 'build');
+  const staticPath = fs.existsSync(path.join(distPath, 'index.html'))
+    ? distPath
+    : (fs.existsSync(path.join(buildPath, 'index.html')) ? buildPath : null);
 
   const isProduction = process.env.NODE_ENV === 'production';
 

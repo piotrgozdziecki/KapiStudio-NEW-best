@@ -282,48 +282,48 @@ export function TimelineView({
   return (
     <div className="flex flex-col h-full bg-[#0E0E12] border-t border-[#222228] select-none text-xs">
       {/* Top Controls Toolbar */}
-      <div className="h-11 border-b border-[#222228] bg-[#141418] px-3 sm:px-4 flex items-center justify-between gap-2 shrink-0">
+      <div className="h-12 border-b border-[#222228] bg-[#141418] px-3 sm:px-4 flex items-center justify-between gap-3 sm:gap-4 shrink-0">
         {/* Left: Action Buttons */}
-        <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-1">
+        <div className="flex items-center gap-3 overflow-x-auto custom-scrollbar py-1">
           <button
             onClick={handleSplitAtPlayhead}
             disabled={!selectedItem}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#1C1C22] hover:bg-[#282830] text-white disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer border border-[#2E2E38] font-mono text-[11px]"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#1C1C22] hover:bg-[#282830] text-white disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer border border-[#2E2E38] text-xs font-semibold font-sans"
             title="Podziel zaznaczony klip w miejscu kursora (Klawisz: S)"
           >
-            <Scissors className="w-3.5 h-3.5 text-[#D4AF37]" />
+            <Scissors className="w-5 h-5 text-[#D4AF37]" />
             <span className="hidden sm:inline">Rozetnij</span>
           </button>
 
           <button
             onClick={() => selectedItem && onDuplicateItem && onDuplicateItem(selectedItem.id)}
             disabled={!selectedItem}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer border border-zinc-800 font-mono text-[11px]"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer border border-zinc-800 text-xs font-semibold font-sans"
             title="Duplikuj klip (Klawisz: D)"
           >
-            <Copy className="w-3.5 h-3.5 text-indigo-400" />
+            <Copy className="w-5 h-5 text-indigo-400" />
             <span className="hidden sm:inline">Duplikuj</span>
           </button>
 
           <button
             onClick={() => selectedItem && onDeleteItem && onDeleteItem(selectedItem.id)}
             disabled={!selectedItem}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-rose-950/40 text-zinc-200 hover:text-rose-400 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer border border-zinc-800 font-mono text-[11px]"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-rose-950/40 text-zinc-200 hover:text-rose-400 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer border border-zinc-800 text-xs font-semibold font-sans"
             title="Usuń zaznaczony klip (Klawisz: Delete)"
           >
-            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+            <Trash2 className="w-5 h-5 text-rose-400" />
             <span className="hidden sm:inline">Usuń</span>
           </button>
 
-          <div className="h-4 w-px bg-zinc-800 mx-1" />
+          <div className="h-5 w-px bg-zinc-800 mx-0.5" />
 
           {onAddTextLayer && (
             <button
               onClick={onAddTextLayer}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 transition-colors cursor-pointer border border-zinc-800 font-mono text-[11px]"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 transition-colors cursor-pointer border border-zinc-800 text-xs font-semibold font-sans"
               title="Dodaj warstwę napisów"
             >
-              <Type className="w-3.5 h-3.5 text-sky-400" />
+              <Type className="w-5 h-5 text-sky-400" />
               <span className="hidden sm:inline">+ Napis</span>
             </button>
           )}
@@ -331,65 +331,65 @@ export function TimelineView({
           {onAddAudioTrack && (
             <button
               onClick={onAddAudioTrack}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 transition-colors cursor-pointer border border-zinc-800 font-mono text-[11px]"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 transition-colors cursor-pointer border border-zinc-800 text-xs font-semibold font-sans"
               title="Dodaj ścieżkę dźwiękową"
             >
-              <Music className="w-3.5 h-3.5 text-emerald-400" />
+              <Music className="w-5 h-5 text-emerald-400" />
               <span className="hidden sm:inline">+ Muzyka</span>
             </button>
           )}
         </div>
 
         {/* Center: Live Timecode & Frame counter */}
-        <div className="flex items-center gap-2 px-3 py-1 bg-zinc-950 border border-zinc-800 rounded-xl font-mono text-xs">
+        <div className="flex items-center gap-3 px-3 py-1.5 bg-zinc-950 border border-zinc-800 rounded-xl font-mono text-xs">
           <span className="text-indigo-400 font-semibold tracking-wider">{formatTimecode(currentTime)}</span>
           <span className="text-zinc-600">/</span>
           <span className="text-zinc-400">{formatTimecode(duration)}</span>
         </div>
 
         {/* Right: Zoom & Utility controls */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => setShowWaveforms(!showWaveforms)}
-            className={`p-1.5 rounded-xl border text-[11px] transition-colors cursor-pointer font-mono ${
+            className={`p-2 rounded-xl border text-xs transition-colors cursor-pointer font-sans font-medium ${
               showWaveforms ? 'bg-indigo-950/40 border-indigo-500/50 text-indigo-300' : 'bg-zinc-900 border-zinc-800 text-zinc-500'
             }`}
             title="Pokaż/Ukryj falę audio"
           >
-            <Activity className="w-3.5 h-3.5" />
+            <Activity className="w-5 h-5" />
           </button>
 
           <button
             onClick={handleCenterPlayhead}
-            className="p-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer font-mono"
+            className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
             title="Wyśrodkuj widok na kursorze"
           >
-            <Maximize2 className="w-3.5 h-3.5" />
+            <Maximize2 className="w-5 h-5" />
           </button>
 
           <button
             onClick={handleFitTimeline}
-            className="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer font-mono text-[10px] font-semibold"
+            className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer font-sans text-xs font-semibold"
             title="Dopasuj oś czasu do ekranu (Fit)"
           >
             FIT
           </button>
 
-          <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-0.5">
+          <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-1 gap-1">
             <button
               onClick={() => setPixelsPerSecond(Math.max(20, pixelsPerSecond - 15))}
               className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white cursor-pointer"
               title="Oddal (Zoom Out)"
             >
-              <ZoomOut className="w-3.5 h-3.5" />
+              <ZoomOut className="w-5 h-5" />
             </button>
-            <span className="text-[10px] font-mono text-zinc-400 px-1">{Math.round((pixelsPerSecond / 50) * 100)}%</span>
+            <span className="text-xs font-mono text-zinc-400 px-1 font-semibold">{Math.round((pixelsPerSecond / 50) * 100)}%</span>
             <button
               onClick={() => setPixelsPerSecond(Math.min(200, pixelsPerSecond + 15))}
               className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white cursor-pointer"
               title="Przybliż (Zoom In)"
             >
-              <ZoomIn className="w-3.5 h-3.5" />
+              <ZoomIn className="w-5 h-5" />
             </button>
           </div>
         </div>

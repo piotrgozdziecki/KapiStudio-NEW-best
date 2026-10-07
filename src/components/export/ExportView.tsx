@@ -30,7 +30,6 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { GoogleDriveIcon } from '../GoogleDriveModal';
-import capybaraForkliftImg from '../../assets/capybara-forklift.jpg';
 import type { ProjectState } from '../../types/project';
 import { videoExportService } from '../../core/export/videoExportService';
 import { exportQueueService } from '../../core/export/exportQueueService';
@@ -2028,27 +2027,23 @@ export function ExportView({ project, onUpdateProject, onNavigateTab, onResetPro
       {/* Finished Result View */}
       {output && !isExporting && (
         <div className="bg-[#121215] border border-[#2A2A30] rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
-          {/* Capybara Mascot Quality Certificate Banner */}
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-zinc-900/90 to-emerald-500/15 border border-amber-500/30 flex items-center justify-between gap-4 shadow-xl">
+          {/* Master Quality Certificate Banner */}
+          <div className="p-4 rounded-2xl bg-[#18181b] border border-[#27272a] flex items-center justify-between gap-4 shadow-xl">
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-amber-500/50 shrink-0 shadow-lg shadow-amber-500/20">
-                <img 
-                  src={capybaraForkliftImg} 
-                  alt="Kapibara na wózku widłowym" 
-                  className="w-full h-full object-cover"
-                />
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 shadow-lg">
+                <CheckCircle2 className="w-6 h-6 text-emerald-400" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-white tracking-tight">
-                    Certyfikat Jakości Kapi-Studio Master
+                    Certyfikat Jakości Pro Video Master
                   </span>
                   <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold">
-                    Zero-Leak VRAM ✓
+                    GPU Accelerated ✓
                   </span>
                 </div>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Operator Kapi pomyślnie przetransportował wyrenderowany strumień 4K. Plik gotowy do projekcji i publikacji.
+                  Silnik pomyślnie przetworzył i wyrenderował strumień 4K. Plik jest gotowy do pobrania i publikacji.
                 </p>
               </div>
             </div>

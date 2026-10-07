@@ -31,26 +31,26 @@
   }
   
   :root {
-    /* DARK CINEMATIC PROFESSIONAL DESIGN TOKENS */
-    --background: #09090b;
-    --surface: #111115;
-    --surface-elevated: #18181c;
-    --surface-hover: #222228;
-    --surface-active: #2a2a32;
+    /* CAPCUT PRO PC/MAC DARK THEME DESIGN TOKENS */
+    --background: #121214;
+    --surface: #18181b;
+    --surface-elevated: #1f1f23;
+    --surface-hover: #27272a;
+    --surface-active: #323238;
     
     --border: rgba(255, 255, 255, 0.08);
     --border-subtle: rgba(255, 255, 255, 0.08);
     --border-strong: rgba(255, 255, 255, 0.16);
-    --border-glow: rgba(99, 102, 241, 0.35);
+    --border-glow: rgba(0, 229, 204, 0.35);
     
     --text-primary: #f4f4f5;
     --text-secondary: #a1a1aa;
     --text-muted: #71717a;
     
-    /* Primary Accent: Electric Indigo */
-    --accent: #6366f1;
-    --accent-hover: #4f46e5;
-    --accent-glow: rgba(99, 102, 241, 0.25);
+    /* Primary Accent: CapCut Signature Cyan / Turquoise */
+    --accent: #00e5cc;
+    --accent-hover: #00c5b5;
+    --accent-glow: rgba(0, 229, 204, 0.25);
     
     /* Semantic Status Tokens */
     --success: #10b981;

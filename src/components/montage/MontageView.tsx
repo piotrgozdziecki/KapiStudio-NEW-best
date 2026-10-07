@@ -44,7 +44,17 @@ import {
   Sun,
   Contrast,
   SlidersHorizontal,
-  Scaling
+  Scaling,
+  Check,
+  Search,
+  Smile,
+  Folder,
+  Undo2,
+  Redo2,
+  Lock,
+  Unlock,
+  MoreHorizontal,
+  Bookmark
 } from 'lucide-react';
 import type { ProjectState, TimelineItem, MediaClip, FitMode, TransitionType, TitleCard, AudioTrackItem } from '../../types/project';
 import { urlRegistry } from '../../core/media/urlRegistry';
@@ -57,6 +67,8 @@ import { adaptiveResourceManager, SystemMetrics } from '../../core/performance/a
 import { SequenceManager } from '../../core/sequence/sequenceManager';
 import { liveAudioEngine } from '../../core/audio/liveAudioEngine';
 import { AudioVuMeter } from '../player/AudioVuMeter';
+import { CapCutResourceBrowser } from './CapCutResourceBrowser';
+import { CapCutInspectorPanel } from './CapCutInspectorPanel';
 
 export type BeautyPreset = 
   | 'none' 
@@ -137,6 +149,32 @@ export const BEAUTY_PRESETS: Record<BeautyPreset, { name: string; icon: string; 
     settings: { enabled: true, skinGlow: 30, brightness: 103, contrast: 108, saturation: 140, warmth: 6, vignette: 12, sharpness: 25 }
   }
 };
+
+export const CAPCUT_FILTER_CATEGORIES = [
+  { id: 'featured', label: 'Featured' },
+  { id: 'pro', label: 'Pro' },
+  { id: 'texture', label: 'Texture' },
+  { id: 'landscape', label: 'Landscape' },
+  { id: 'movies', label: 'Movies' },
+  { id: 'mono', label: 'Mono' },
+  { id: 'portrait', label: 'Portrait' },
+  { id: 'retro', label: 'Retro' },
+  { id: 'night', label: 'Night scene' },
+  { id: 'stylize', label: 'Stylize' },
+  { id: 'food', label: 'Food' }
+];
+
+export const CAPCUT_FILTER_ITEMS = [
+  { id: 'holiday', name: 'Hollywood Warm', category: 'featured', gradient: 'bg-gradient-to-br from-amber-600 via-orange-500 to-indigo-900', preset: 'hollywood_warm' as BeautyPreset },
+  { id: 'anime_bw', name: 'Moody Noir', category: 'featured', gradient: 'bg-gradient-to-br from-zinc-950 via-zinc-800 to-zinc-900', preset: 'moody_noir' as BeautyPreset },
+  { id: '4k_cinema', name: 'Teal & Orange', category: 'featured', gradient: 'bg-gradient-to-br from-cyan-600 via-teal-700 to-amber-600', preset: 'teal_orange' as BeautyPreset },
+  { id: 'enhance', name: 'Beauty Glow', category: 'featured', gradient: 'bg-gradient-to-br from-pink-500 via-rose-400 to-amber-300', preset: 'beauty_glow' as BeautyPreset },
+  { id: '8k_crystal', name: 'Vibrant Pop', category: 'featured', gradient: 'bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-400', preset: 'vibrant_pop' as BeautyPreset },
+  { id: 'low_key', name: 'Low-Key Dark', category: 'featured', gradient: 'bg-gradient-to-br from-slate-950 via-slate-900 to-zinc-950', preset: 'moody_noir' as BeautyPreset },
+  { id: 'clear_ii', name: 'Nordic Frost', category: 'featured', gradient: 'bg-gradient-to-br from-sky-700 via-cyan-600 to-slate-900', preset: 'nordic_frost' as BeautyPreset },
+  { id: 'peach_glow', name: 'Glamour Soft', category: 'featured', gradient: 'bg-gradient-to-br from-orange-400 via-amber-300 to-rose-400', preset: 'glamour_soft' as BeautyPreset },
+  { id: 'humble', name: 'Vintage 35mm', category: 'featured', gradient: 'bg-gradient-to-br from-amber-800 via-yellow-700 to-zinc-900', preset: 'vintage_35mm' as BeautyPreset }
+];
 
 interface MontageViewProps {
   project: ProjectState;
@@ -435,6 +473,20 @@ export function MontageView({
   const [useProxyPreview, setUseProxyPreview] = useState<boolean>(true);
   const [systemMetrics, setSystemMetrics] = useState<SystemMetrics>(adaptiveResourceManager.getMetrics());
   const [isGeneratingAllProxies, setIsGeneratingAllProxies] = useState<boolean>(false);
+
+  // CapCut Pro Resource Tabs and Filter State
+  const [resourceTab, setResourceTab] = useState<'media' | 'audio' | 'text' | 'stickers' | 'effects' | 'transitions' | 'filters' | 'adjustment'>('filters');
+  const [filterCategory, setFilterCategory] = useState<string>('featured');
+  const [filterSearchQuery, setFilterSearchQuery] = useState<string>('');
+  const [inspectorMainTab, setInspectorMainTab] = useState<'video' | 'speed' | 'animation' | 'adjust' | 'ai_stylize'>('video');
+  const [inspectorSubTab, setInspectorSubTab] = useState<'basic' | 'remove_bg' | 'mask' | 'retouch'>('basic');
+  const [enhanceImage, setEnhanceImage] = useState<boolean>(true);
+  const [enhanceLevel, setEnhanceLevel] = useState<string>('UHD');
+  const [reduceNoise, setReduceNoise] = useState<boolean>(true);
+  const [reduceNoiseLevel, setReduceNoiseLevel] = useState<string>('Weak');
+  const [opticalFlow, setOpticalFlow] = useState<boolean>(false);
+  const [aiExpand, setAiExpand] = useState<boolean>(false);
+  const [aiRemove, setAiRemove] = useState<boolean>(false);
 
   // Studio Efektów Piękna & Color Grading (Beauty Polish, Skin Glow, Cinematic LUTs)
   const [beautyGrade, setBeautyGrade] = useState<BeautyGradeSettings>({
@@ -1163,60 +1215,61 @@ export function MontageView({
   }, []);
 
   return (
-    <div className="max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 flex flex-col gap-5 sm:gap-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-4">
-        <div>
-          <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold tracking-wider uppercase mb-0.5 font-mono">
-            <Film className="w-3.5 h-3.5" />
-            <span>Timeline 2.0 • Studio Montażu</span>
+    <div className="h-full w-full flex flex-col overflow-hidden bg-[#121214] text-zinc-100 select-none p-1.5 gap-1.5">
+      {/* TOP ROW: CapCut 3-Panel Layout (Resource Browser + Player + Inspector) */}
+      <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-1.5 overflow-hidden">
+        {/* Quadrant 1: Left Resource Browser */}
+        <div className="w-full md:w-[340px] lg:w-[390px] shrink-0 h-48 md:h-full overflow-hidden">
+          <CapCutResourceBrowser
+            project={project}
+            activePreset={beautyGrade.preset}
+            onSelectFilter={handleApplyBeautyPreset}
+            onAddMediaClick={() => onNavigateTab('media')}
+            onOpenVoiceRecorder={onOpenVoiceRecorder}
+            onOpenBeatSync={onOpenBeatSync}
+            onOpenAutoCaptions={onOpenAutoCaptions}
+            onAddClipToTimeline={(clip) => {
+              if (onUpdateTimelineItems) {
+                const newItem: TimelineItem = {
+                  id: `t_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                  clipId: clip.id,
+                  trackId: 'v1',
+                  sourceStart: 0,
+                  sourceEnd: clip.duration,
+                  timelineStart: totalDuration,
+                  duration: clip.duration,
+                  speed: 1.0,
+                  volume: 1.0,
+                  fadeIn: 0,
+                  fadeOut: 0,
+                  muted: false,
+                  scale: 1.0,
+                  rotation: 0
+                };
+                onUpdateTimelineItems([...sortedItems, newItem]);
+                toast.showSuccess(`Dodano "${clip.name}" do osi czasu.`);
+              }
+            }}
+          />
+        </div>
+
+        {/* Quadrant 2: Center Player Monitor */}
+        <div 
+          ref={playerContainerRef}
+          className={`flex-1 min-w-0 bg-[#18181b] border border-[#27272a] rounded-lg flex flex-col overflow-hidden relative ${
+            isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none justify-center p-2 bg-black' : ''
+          }`}
+        >
+          {/* Player Header */}
+          <div className="h-7 px-3 border-b border-[#27272a] bg-[#141416] flex items-center justify-between shrink-0 text-xs font-semibold text-zinc-300">
+            <span>Player</span>
+            <div className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-300 cursor-pointer text-sm">
+              <span>≡</span>
+            </div>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-            Podgląd i Precyzyjne Cięcie Sekwencji
-          </h1>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => onNavigateTab('export')}
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-lg shadow-indigo-600/30 cursor-pointer uppercase tracking-wider min-h-[44px]"
-          >
-            <span>SCAL I EKSPORTUJ</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {sortedItems.length === 0 ? (
-        <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-10 text-center flex flex-col items-center justify-center gap-4 my-6">
-          <Film className="w-10 h-10 text-zinc-600" />
-          <h2 className="text-white font-bold text-lg">Brak filmów na osi czasu</h2>
-          <p className="text-xs text-zinc-400 max-w-sm">Dodaj filmy, aby rozpocząć montaż, ustawić kolejność i precyzyjnie przyciąć klatki.</p>
-          <button
-            onClick={() => onNavigateTab('project')}
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl cursor-pointer min-h-[44px]"
-          >
-            DODAJ FILMY
-          </button>
-        </div>
-      ) : (
-        <>
-          {/* Main Cinema Video Player */}
-          <div 
-            ref={playerContainerRef}
-            className={`bg-black border border-zinc-800/80 rounded-2xl overflow-hidden shadow-2xl flex flex-col items-center relative transition-all ${
-              isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none justify-center p-2 sm:p-6 bg-black/98' : ''
-            }`}
-          >
-            {/* Viewport with Aspect Ratio constraint */}
-            <div 
-              className={`relative w-full flex items-center justify-center overflow-hidden bg-[#09090b] transition-all select-none ${
-                aspectMode === '16:9' ? 'aspect-video w-full h-[52vh] sm:h-[62vh] max-h-[720px] min-h-[340px]' :
-                aspectMode === '9:16' ? 'aspect-[9/16] h-[56vh] sm:h-[66vh] max-h-[760px] min-h-[360px]' :
-                aspectMode === '4:3' ? 'aspect-[4/3] h-[52vh] sm:h-[62vh] max-h-[700px] min-h-[340px]' :
-                'aspect-square h-[52vh] sm:h-[60vh] max-h-[660px] min-h-[340px]'
-              }`}
-            >
+          {/* Viewport with Aspect Ratio constraint */}
+          <div className="flex-1 min-h-0 w-full flex items-center justify-center overflow-hidden bg-[#0a0a0c] relative select-none">
               {/* Cinematic Ambient Blur Background for mixed horizontal/vertical clips */}
               {fitStyle === 'blur' && (activeMediaSourceUrl || activeClip?.thumbnailUrl) && (
                 <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none select-none">
@@ -1382,21 +1435,21 @@ export function MontageView({
               </div>
             </div>
 
-            {/* Transport Control Bar with Mobile & Desktop Auto-Scaling */}
-            <div className="w-full bg-zinc-900/90 border-t border-zinc-800 p-2.5 sm:p-4 flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+            {/* Transport Control Bar (CapCut Desktop PC/Mac Pro Style) */}
+            <div className="w-full bg-[#18181b] border-t border-[#27272a] px-3 py-2 flex flex-wrap items-center justify-between gap-2 shrink-0 select-none">
               {/* Transport Buttons */}
-              <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   onClick={handleStop}
-                  className="p-2 sm:p-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors cursor-pointer min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center border border-zinc-700/60"
+                  className="p-2 rounded-md bg-[#222226] hover:bg-[#2e2e33] text-zinc-300 hover:text-white transition-colors cursor-pointer border border-[#3f3f46]/30 flex items-center justify-center"
                   title="Stop (Reset do początku)"
                 >
-                  <Square className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
+                  <Square className="w-3.5 h-3.5 fill-current" />
                 </button>
 
                 <button
                   onClick={() => handleSkip(-5)}
-                  className="px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors cursor-pointer text-xs font-mono font-bold min-h-[40px] sm:min-h-[44px] flex items-center justify-center border border-zinc-700/60"
+                  className="px-2 py-1 rounded-md bg-[#222226] hover:bg-[#2e2e33] text-zinc-300 hover:text-white transition-colors cursor-pointer text-xs font-mono font-bold border border-[#3f3f46]/30 flex items-center justify-center"
                   title="Cofnij o 5 sekund"
                 >
                   -5s
@@ -1404,7 +1457,7 @@ export function MontageView({
 
                 <button
                   onClick={() => handleStepFrames(-1)}
-                  className="p-2 sm:p-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors cursor-pointer min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center font-mono text-xs border border-zinc-700/60"
+                  className="px-2 py-1 rounded-md bg-[#222226] hover:bg-[#2e2e33] text-zinc-300 hover:text-white transition-colors cursor-pointer font-mono text-xs border border-[#3f3f46]/30 flex items-center justify-center"
                   title="Cofnij o 1 klatkę"
                 >
                   -1 kl.
@@ -1412,16 +1465,16 @@ export function MontageView({
 
                 <button
                   onClick={handlePlayToggle}
-                  className="px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold flex items-center gap-1.5 sm:gap-2 transition-all shadow-lg shadow-indigo-600/30 cursor-pointer min-h-[40px] sm:min-h-[44px]"
+                  className="px-4 py-1.5 rounded-md bg-[#00e5cc] hover:bg-[#00c5b5] text-black font-extrabold flex items-center gap-1.5 transition-all shadow-[0_0_12px_rgba(0,229,204,0.3)] cursor-pointer"
                   title={isPlaying ? 'Pauza (Spacja)' : 'Odtwórz (Spacja)'}
                 >
-                  {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-white" />}
-                  <span className="text-xs uppercase font-mono tracking-wider">{isPlaying ? 'PAUZA' : 'PLAY'}</span>
+                  {isPlaying ? <Pause className="w-4 h-4 fill-black" /> : <Play className="w-4 h-4 fill-black" />}
+                  <span className="text-xs uppercase font-mono tracking-wider font-bold">{isPlaying ? 'PAUZA' : 'PLAY'}</span>
                 </button>
 
                 <button
                   onClick={() => handleStepFrames(1)}
-                  className="p-2 sm:p-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors cursor-pointer min-h-[40px] min-w-[40px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center font-mono text-xs border border-zinc-700/60"
+                  className="px-2 py-1 rounded-md bg-[#222226] hover:bg-[#2e2e33] text-zinc-300 hover:text-white transition-colors cursor-pointer font-mono text-xs border border-[#3f3f46]/30 flex items-center justify-center"
                   title="Następna klatka (+1)"
                 >
                   +1 kl.
@@ -1429,7 +1482,7 @@ export function MontageView({
 
                 <button
                   onClick={() => handleSkip(5)}
-                  className="px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors cursor-pointer text-xs font-mono font-bold min-h-[40px] sm:min-h-[44px] flex items-center justify-center border border-zinc-700/60"
+                  className="px-2 py-1 rounded-md bg-[#222226] hover:bg-[#2e2e33] text-zinc-300 hover:text-white transition-colors cursor-pointer text-xs font-mono font-bold border border-[#3f3f46]/30 flex items-center justify-center"
                   title="Przewiń o 5 sekund"
                 >
                   +5s
@@ -1439,25 +1492,25 @@ export function MontageView({
                 {onSplitTimelineItem && (
                   <button
                     onClick={handleSplitAtPlayhead}
-                    className="px-3 py-1.5 sm:py-2 bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/60 hover:border-indigo-400 text-indigo-200 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition cursor-pointer min-h-[40px] sm:min-h-[44px] shadow-sm"
+                    className="px-2.5 py-1 bg-[#222226] hover:bg-[#2e2e33] border border-[#00e5cc]/50 hover:border-[#00e5cc] text-[#00e5cc] rounded-md text-xs font-mono font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm"
                     title="Rozetnij ujęcie w miejscu suwaka czasu (Skrót klawiszowy: S lub B)"
                   >
-                    <Scissors className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>Rozetnij (S)</span>
+                    <Scissors className="w-3.5 h-3.5 text-[#00e5cc]" />
+                    <span>Rozetnij (B)</span>
                   </button>
                 )}
               </div>
 
               {/* Timecode Display */}
-              <div className="font-mono text-xs sm:text-sm text-zinc-200 flex items-center gap-1.5 sm:gap-2 bg-zinc-950 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl border border-zinc-800 shrink-0">
-                <Clock className="w-3.5 h-3.5 text-indigo-400" />
-                <span className="text-white font-bold">{formatTimePrecise(currentTime)}</span>
+              <div className="font-mono text-xs text-zinc-200 flex items-center gap-1.5 bg-[#141416] px-3 py-1 rounded-md border border-[#27272a] shrink-0">
+                <Clock className="w-3.5 h-3.5 text-[#00e5cc]" />
+                <span className="text-[#00e5cc] font-bold">{formatTimePrecise(currentTime)}</span>
                 <span className="text-zinc-600">/</span>
                 <span className="text-zinc-400">{formatTimeSimple(totalDuration)}</span>
               </div>
 
               {/* Aspect Ratio, Fit Mode, Proxy Mode & Volume Controls */}
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 {/* Proxy Preview Toggle Button */}
                 <button
                   onClick={() => {
@@ -1465,25 +1518,25 @@ export function MontageView({
                     setUseProxyPreview(next);
                     toast.showInfo(next ? '⚡ Włączono tryb podglądu PROXY (płynny montaż).' : 'Włączono tryb podglądu PEŁNEJ JAKOŚCI (oryginał).');
                   }}
-                  className={`px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition min-h-[36px] sm:min-h-[40px] ${
+                  className={`px-2.5 py-1 rounded-md border text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition ${
                     useProxyPreview
-                      ? 'bg-cyan-950/80 border-cyan-500/60 text-cyan-300 shadow-md shadow-cyan-950/40'
-                      : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white'
+                      ? 'bg-cyan-950/80 border-[#00e5cc]/60 text-[#00e5cc] shadow-[0_0_8px_rgba(0,229,204,0.2)]'
+                      : 'bg-[#141416] border-[#27272a] text-zinc-400 hover:text-white'
                   }`}
                   title={useProxyPreview ? 'Podgląd Proxy aktywny (płynny montaż 720p). Kliknij, aby przełączyć na pełną jakość oryginału.' : 'Podgląd w pełnej jakości. Kliknij, aby przełączyć na lekkie Proxy.'}
                 >
-                  <Zap className={`w-3.5 h-3.5 ${useProxyPreview ? 'text-cyan-400 animate-pulse' : 'text-zinc-500'}`} />
+                  <Zap className={`w-3.5 h-3.5 ${useProxyPreview ? 'text-[#00e5cc] animate-pulse' : 'text-zinc-500'}`} />
                   <span>PROXY: {useProxyPreview ? 'WŁ' : 'WYŁ'}</span>
                 </button>
 
                 {/* Aspect Switcher */}
-                <div className="flex items-center gap-0.5 sm:gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800 text-xs font-mono">
+                <div className="flex items-center gap-0.5 bg-[#141416] p-0.5 rounded-md border border-[#27272a] text-xs font-mono">
                   {(['16:9', '9:16', '1:1'] as const).map(mode => (
                     <button
                       key={mode}
                       onClick={() => setAspectMode(mode)}
-                      className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg transition-colors cursor-pointer text-[11px] sm:text-xs ${
-                        aspectMode === mode ? 'bg-indigo-600 text-white font-bold shadow' : 'text-zinc-400 hover:text-white'
+                      className={`px-2 py-0.5 rounded transition-colors cursor-pointer text-xs ${
+                        aspectMode === mode ? 'bg-[#27272a] text-[#00e5cc] font-bold shadow' : 'text-zinc-400 hover:text-white'
                       }`}
                     >
                       {mode}
@@ -1494,16 +1547,15 @@ export function MontageView({
                 {/* Studio Efektów Piękna & Color Studio Button */}
                 <button
                   onClick={() => setIsBeautyStudioOpen(!isBeautyStudioOpen)}
-                  className={`px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition min-h-[36px] sm:min-h-[40px] ${
+                  className={`px-2.5 py-1 rounded-md border text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition ${
                     beautyGrade.enabled
-                      ? 'bg-gradient-to-r from-amber-500/20 via-pink-500/15 to-indigo-500/20 border-amber-400/50 text-amber-200 shadow-md shadow-amber-950/40'
-                      : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white'
+                      ? 'bg-amber-500/20 border-amber-400/60 text-amber-300'
+                      : 'bg-[#141416] border-[#27272a] text-zinc-400 hover:text-white'
                   }`}
-                  title="Studio Kolorów i Efektów Piękna (LUTy kinowe, wygładzenie cery, złoty blask, winieta, nasycenie)"
+                  title="Otwórz Studio Kolorów, Wygładzania Cery i Kinowych LUTów"
                 >
-                  <Sparkles className={`w-3.5 h-3.5 ${beautyGrade.enabled ? 'text-amber-400 animate-pulse' : 'text-zinc-500'}`} />
-                  <span className="hidden sm:inline">PIĘKNO:</span>
-                  <span>{beautyGrade.enabled ? BEAUTY_PRESETS[beautyGrade.preset]?.name || 'Aktywne' : 'WYŁ'}</span>
+                  <Sparkles className={`w-3.5 h-3.5 ${beautyGrade.enabled ? 'text-amber-400 animate-pulse' : 'text-zinc-400'}`} />
+                  <span>KOLOR: {beautyGrade.enabled ? 'WŁ' : 'WYŁ'}</span>
                 </button>
 
                 {/* Framing Fit Mode */}
@@ -1512,23 +1564,23 @@ export function MontageView({
                     const next = fitStyle === 'fit' ? 'blur' : (fitStyle === 'blur' ? 'fill' : 'fit');
                     setFitStyle(next);
                   }}
-                  className="px-2.5 sm:px-3 py-1.5 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-mono text-white flex items-center gap-1.5 hover:border-indigo-500/50 cursor-pointer min-h-[36px] sm:min-h-[40px]"
+                  className="px-2.5 py-1 bg-[#141416] border border-[#27272a] rounded-md text-xs font-mono text-zinc-300 flex items-center gap-1.5 hover:border-zinc-500 cursor-pointer"
                   title="Przełącz styl kadrowania: Dopasuj, Kinowe Rozmycie tła lub Wypełnij"
                 >
-                  <Eye className="w-3.5 h-3.5 text-indigo-400" />
-                  <span className="font-bold text-[11px] sm:text-xs">
+                  <Eye className="w-3.5 h-3.5 text-[#00e5cc]" />
+                  <span className="font-bold text-[11px]">
                     {fitStyle === 'fit' ? 'Dopasuj' : fitStyle === 'blur' ? 'Rozmyte tło' : 'Wypełnij'}
                   </span>
                 </button>
 
                 {/* Volume & Mute with Real-Time VU Meter */}
-                <div className="flex items-center gap-1.5 sm:gap-2 bg-zinc-950 px-2.5 py-1.5 rounded-xl border border-zinc-800 min-h-[36px] sm:min-h-[40px]">
+                <div className="flex items-center gap-1.5 bg-[#141416] px-2.5 py-1 rounded-md border border-[#27272a]">
                   <button
                     onClick={() => setIsMuted(!isMuted)}
                     className="text-zinc-400 hover:text-white cursor-pointer"
                     title={isMuted ? 'Wyłącz wyciszenie' : 'Wycisz dźwięk'}
                   >
-                    {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
+                    {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-[#00e5cc]" />}
                   </button>
                   <input
                     type="range"
@@ -1540,7 +1592,7 @@ export function MontageView({
                       setVolume(parseFloat(e.target.value));
                       if (isMuted) setIsMuted(false);
                     }}
-                    className="w-12 sm:w-16 accent-indigo-500 cursor-pointer"
+                    className="w-12 sm:w-16 accent-[#00e5cc] cursor-pointer"
                   />
                   <AudioVuMeter isPlaying={isPlaying} isMuted={isMuted} className="hidden xs:flex border-none !p-0 !bg-transparent" />
                 </div>
@@ -1548,13 +1600,26 @@ export function MontageView({
                 {/* Fullscreen Button */}
                 <button
                   onClick={toggleFullscreen}
-                  className="p-2 sm:p-2.5 rounded-xl bg-zinc-950 hover:bg-zinc-850 text-zinc-400 hover:text-white border border-zinc-800 transition-colors cursor-pointer min-h-[36px] min-w-[36px] sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center"
+                  className="p-1.5 rounded-md bg-[#141416] hover:bg-[#27272a] text-zinc-400 hover:text-white border border-[#27272a] transition-colors cursor-pointer"
                   title="Pełny ekran"
                 >
                   {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Quadrant 3: Right Inspector / Details Panel */}
+          <div className="w-full md:w-[310px] lg:w-[350px] xl:w-[370px] shrink-0 h-64 md:h-full overflow-hidden">
+            <CapCutInspectorPanel
+              selectedItem={selectedItem || null}
+              selectedClip={selectedClip || null}
+              project={project}
+              onUpdateTimelineItem={onUpdateTimelineItem}
+              onDeleteTimelineItem={onDeleteTimelineItem}
+            />
+          </div>
+        </div>
 
             {/* Studio Kolorów i Efektów Piękna (Interactive Beauty & Color Grading Drawer) */}
             {isBeautyStudioOpen && (
@@ -1790,9 +1855,8 @@ export function MontageView({
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Timeline 2.0 Sequence Section */}
+            {/* Timeline 2.0 Sequence Section */}
           <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-zinc-400">
               <div className="flex items-center gap-2.5 flex-wrap">
@@ -1948,7 +2012,7 @@ export function MontageView({
                   <button
                     onClick={onOpenAutoCaptions}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-950/60 hover:bg-purple-900/70 border border-purple-500/40 hover:border-purple-400 text-purple-200 hover:text-white rounded-xl transition-all cursor-pointer font-sans text-xs font-bold shadow-sm"
-                    title="Automatyczna transkrypcja mowy, dynamiczne napisy karaoke (CapCut style) oraz edytor SRT"
+                    title="Automatyczna transkrypcja mowy, dynamiczne napisy oraz edytor SRT"
                   >
                     <Type className="w-3.5 h-3.5 text-purple-400" />
                     <span>Napisy & Auto-Captions</span>
@@ -1995,6 +2059,114 @@ export function MontageView({
                 >
                   Reset
                 </button>
+              </div>
+            </div>
+
+            {/* CapCut Desktop Pro Secondary Quick Action Toolbar */}
+            <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-zinc-950/90 border border-zinc-800/80 rounded-xl text-xs font-mono text-zinc-300">
+              <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                {/* Razor / Split Tool */}
+                <button
+                  onClick={handleSplitAtPlayhead}
+                  className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 hover:bg-indigo-600 hover:text-white border border-zinc-800 hover:border-indigo-500 rounded-lg text-xs font-medium cursor-pointer transition shadow-sm"
+                  title="Rozetnij ujęcie w pozycji suwaka czasu (Skrót: B lub Ctrl+B)"
+                >
+                  <Scissors className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="font-semibold">Rozetnij</span>
+                  <span className="text-[10px] text-zinc-500 font-mono hidden sm:inline">[B]</span>
+                </button>
+
+                {/* Delete Selected Item */}
+                <button
+                  onClick={() => {
+                    if (!selectedItem) {
+                      toast.showWarning('Zaznacz ujęcie, które chcesz usunąć z osi.');
+                      return;
+                    }
+                    onDeleteTimelineItem(selectedItem.id);
+                    toast.showInfo('🗑️ Usunięto zaznaczone ujęcie z osi.');
+                  }}
+                  disabled={!selectedItem}
+                  className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 hover:bg-rose-600 hover:text-white border border-zinc-800 hover:border-rose-500 rounded-lg text-xs font-medium cursor-pointer transition shadow-sm disabled:opacity-40 disabled:pointer-events-none"
+                  title="Usuń zaznaczone ujęcie z osi czasu (Skrót: Delete / Backspace)"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                  <span className="font-semibold">Usuń</span>
+                  <span className="text-[10px] text-zinc-500 font-mono hidden sm:inline">[Del]</span>
+                </button>
+
+                {/* Duplicate Selected Item */}
+                <button
+                  onClick={() => {
+                    if (!selectedItem || !onUpdateTimelineItems) {
+                      toast.showWarning('Zaznacz ujęcie do sklonowania.');
+                      return;
+                    }
+                    const currentIndex = sortedItems.findIndex(i => i.id === selectedItem.id);
+                    const cloned: TimelineItem = {
+                      ...selectedItem,
+                      id: `t_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+                    };
+                    const updated = [...sortedItems];
+                    updated.splice(currentIndex + 1, 0, cloned);
+                    // Recalculate timelineStart
+                    let runningTime = 0;
+                    const normalized = updated.map(item => {
+                      const recalculated = { ...item, timelineStart: runningTime };
+                      runningTime += item.duration;
+                      return recalculated;
+                    });
+                    onUpdateTimelineItems(normalized);
+                    toast.showSuccess('📑 Zduplikowano ujęcie na osi czasu.');
+                  }}
+                  disabled={!selectedItem || !onUpdateTimelineItems}
+                  className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 rounded-lg text-xs font-medium cursor-pointer transition shadow-sm disabled:opacity-40 disabled:pointer-events-none"
+                  title="Zduplikuj wybrane ujęcie i wstaw na osi czasu"
+                >
+                  <Copy className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="font-semibold hidden sm:inline">Klonuj</span>
+                </button>
+
+                {/* Quick Rotate 90° */}
+                <button
+                  onClick={() => {
+                    if (!selectedItem) {
+                      toast.showWarning('Zaznacz ujęcie, aby obrócić kadr.');
+                      return;
+                    }
+                    const nextRot = (((selectedItem.rotation || 0) + 90) % 360) as 0 | 90 | 180 | 270;
+                    onUpdateTimelineItem(selectedItem.id, { rotation: nextRot });
+                    toast.showSuccess(`↻ Obrócono kadr do ${nextRot}°.`);
+                  }}
+                  disabled={!selectedItem}
+                  className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 rounded-lg text-xs font-medium cursor-pointer transition shadow-sm disabled:opacity-40 disabled:pointer-events-none"
+                  title="Obróć zaznaczone ujęcie o 90 stopni zgodnie z ruchem wskazówek zegara"
+                >
+                  <RotateCw className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="font-semibold hidden sm:inline">Obróć 90°</span>
+                </button>
+
+                {/* Jump to Selected Clip Start */}
+                {selectedItem && (
+                  <button
+                    onClick={() => handleSeek(selectedItem.timelineStart)}
+                    className="flex items-center gap-1 px-2 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 rounded-lg text-xs cursor-pointer transition"
+                    title="Przejdź suwakiem czasu do początku zaznaczonego ujęcia"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5 text-indigo-400" />
+                    <span className="text-[11px] hidden md:inline">Do początku ujęcia</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Timecode & Frame Display */}
+              <div className="flex items-center gap-2 font-mono text-[11px] bg-zinc-900/80 px-2.5 py-1 rounded-lg border border-zinc-800/60">
+                <span className="text-zinc-500">KADR:</span>
+                <span className="text-indigo-300 font-bold">#{currentFrameIndex}</span>
+                <span className="text-zinc-700">|</span>
+                <span className="text-emerald-400 font-bold">{formatTimePrecise(currentTime)}</span>
+                <span className="text-zinc-600">/</span>
+                <span className="text-zinc-400">{formatTimePrecise(totalDuration)}</span>
               </div>
             </div>
 
@@ -2838,8 +3010,6 @@ export function MontageView({
               )}
             </div>
           )}
-        </>
-      )}
     </div>
   );
 }

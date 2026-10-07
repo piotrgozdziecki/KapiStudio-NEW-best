@@ -56,7 +56,7 @@ import { MasterDirectorHubModal, DirectorHubTab } from './director/MasterDirecto
 import type { ProjectState, MediaClip, TimelineItem, AudioTrackItem, TextLayer, VideoChapter, ClipCategory, TitleCard, TransitionType } from '../types/project';
 
 export function StudioApp() {
-  const [activeTab, setActiveTab] = useState<string>('project');
+  const [activeTab, setActiveTab] = useState<string>('montage');
   const [isMasterHubOpen, setIsMasterHubOpen] = useState(false);
   const [masterHubTab, setMasterHubTab] = useState<DirectorHubTab>('director');
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);

@@ -39,7 +39,7 @@ export const TITLE_CARD_PRESETS: {
   {
     id: 'modern_bold',
     name: 'Modern Commercial',
-    description: 'Mocna, nowoczesna typografia z dynamicznym akcentem graficznym (CapCut / Premiere)',
+    description: 'Mocna, nowoczesna typografia z dynamicznym akcentem graficznym',
     badge: 'Social & Promo'
   },
   {

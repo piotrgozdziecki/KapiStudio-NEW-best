@@ -44,7 +44,7 @@ import { localIndexedDB } from '../../core/storage/indexedDBProvider';
 import { ConfirmModal } from '../common/ConfirmModal';
 import { proxyEngine } from '../../core/proxy/proxyEngine';
 import { useStudioToast } from '../common/ToastContext';
-import capybaraForkliftImg from '../../assets/capybara-forklift.jpg';
+// Pro Video Suite Media Manager
 
 interface MediaManagerProps {
   clips: MediaClip[];
@@ -850,39 +850,32 @@ export function MediaManager({
   return (
     <div className="flex flex-col space-y-4 pb-6 w-full max-w-full">
       
-      {/* Capybara Forklift Operator - Glassmorphism Corner Card Component */}
-      <div className="w-full glass-panel rounded-2xl p-4 sm:p-5 border border-amber-500/35 bg-gradient-to-r from-amber-950/40 via-zinc-900/90 to-indigo-950/40 shadow-2xl relative overflow-hidden backdrop-blur-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
+      {/* Pro Video Suite Media Header Component */}
+      <div className="w-full rounded-2xl p-4 sm:p-5 border border-[#27272a] bg-[#18181b] shadow-2xl relative overflow-hidden backdrop-blur-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-4">
-          {/* Capybara Avatar with Lucide icons frame */}
+          {/* Pro Icon Frame */}
           <div className="relative group shrink-0">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-amber-500/60 shadow-2xl shadow-amber-500/25 transform transition-transform group-hover:scale-105">
-              <img 
-                src={capybaraForkliftImg} 
-                alt="Kapibara na wózku widłowym - Operator Kapi-Studio" 
-                className="w-full h-full object-cover"
-              />
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-indigo-500/20 border border-cyan-500/40 flex items-center justify-center text-[#00e5cc] shadow-inner">
+              <Film className="w-7 h-7 text-[#00e5cc]" />
             </div>
-            <div className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-amber-500 text-black flex items-center justify-center shadow-lg border border-amber-300">
-              <Truck className="w-3.5 h-3.5" />
-            </div>
-            <div className="absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded-full bg-indigo-600 text-white text-[9px] font-bold flex items-center gap-1 border border-indigo-400">
-              <Sparkles className="w-2.5 h-2.5" />
-              <span>KAPI</span>
+            <div className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full bg-[#27272a] text-[#00e5cc] text-[9px] font-mono font-bold flex items-center gap-1 border border-cyan-500/40">
+              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+              <span>4K</span>
             </div>
           </div>
 
           <div className="space-y-1 text-center sm:text-left">
             <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-              <span className="text-sm sm:text-base font-bold text-white font-heading tracking-tight flex items-center gap-1.5">
-                <span>Operator Kapi • Logistyka 4K</span>
+              <span className="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-1.5">
+                <span>Biblioteka Mediów Pro</span>
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               </span>
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-[10px] font-mono font-extrabold text-amber-300 uppercase tracking-wider shadow-sm">
-                Wózek Widłowy Active ⚡
+              <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-[10px] font-mono font-bold text-[#00e5cc]">
+                GPU Multi-Threaded ⚡
               </span>
             </div>
-            <p className="text-xs text-zinc-300 max-w-xl leading-relaxed">
-              Oficjalna maskotka studia dba o bezpieczny rozładunek Twoich ujęć 4K, krystaliczne wczytywanie klatek i 0% wycieków VRAM.
+            <p className="text-xs text-zinc-400 max-w-xl leading-relaxed">
+              Zarządzanie ujęciami 4K, automatyczne generowanie lekkich kopii roboczych (Proxy) oraz synchronizacja z Dyskiem Google.
             </p>
             <div className="flex items-center justify-center sm:justify-start gap-3 text-[11px] font-mono text-zinc-400 pt-0.5">
               <span className="flex items-center gap-1 text-amber-400 font-bold">
@@ -1091,80 +1084,80 @@ export function MediaManager({
       <div className="flex flex-col gap-3.5 glass-panel p-3.5 sm:p-4 rounded-2xl border border-zinc-800 shrink-0 shadow-xl backdrop-blur-xl">
         
         {/* Row 1: Search + Filter Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-3 w-full">
+        <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 w-full">
           {/* Search */}
           <div className="relative flex-1 min-w-0 w-full sm:w-auto sm:max-w-md">
-            <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-5 h-5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Szukaj ujęcia lub tagu..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-zinc-900 border border-zinc-800 focus:border-indigo-500 rounded-xl pl-8 pr-3 py-1.5 text-xs text-zinc-100 focus:outline-none transition-colors"
+              className="w-full bg-zinc-900 border border-zinc-800 focus:border-indigo-500 rounded-xl pl-10 pr-3 py-2 text-xs text-zinc-100 focus:outline-none transition-colors font-sans font-medium"
             />
           </div>
 
           {/* Filter Tabs */}
-          <div className="flex items-center gap-1 bg-zinc-900/90 p-1 rounded-xl border border-zinc-800 text-[11px] overflow-x-auto touch-pan-x custom-scrollbar max-w-full">
+          <div className="flex items-center gap-2 bg-zinc-900/90 p-1.5 rounded-xl border border-zinc-800 text-xs overflow-x-auto touch-pan-x custom-scrollbar max-w-full font-sans">
             <button
               onClick={() => handleFilterTabChange('all')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-medium cursor-pointer ${filterTab === 'all' ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold cursor-pointer ${filterTab === 'all' ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}
             >
               Wszystkie ({clips.length})
             </button>
             <button
               onClick={() => handleFilterTabChange('video')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-medium flex items-center gap-1 cursor-pointer ${filterTab === 'video' ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold flex items-center gap-2 cursor-pointer ${filterTab === 'video' ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}
             >
-              <Film className="w-3 h-3" />
+              <Film className="w-5 h-5" />
               <span>Wideo ({clips.filter(c => c.type === 'video').length})</span>
             </button>
             <button
               onClick={() => handleFilterTabChange('image')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-medium flex items-center gap-1 cursor-pointer ${filterTab === 'image' ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold flex items-center gap-2 cursor-pointer ${filterTab === 'image' ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}
             >
-              <ImageIcon className="w-3 h-3" />
+              <ImageIcon className="w-5 h-5" />
               <span>Zdjęcia ({clips.filter(c => c.type === 'image').length})</span>
             </button>
             <button
               onClick={() => handleFilterTabChange('audio')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-medium flex items-center gap-1 cursor-pointer ${filterTab === 'audio' ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold flex items-center gap-2 cursor-pointer ${filterTab === 'audio' ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}
             >
-              <Music className="w-3 h-3" />
+              <Music className="w-5 h-5" />
               <span>Audio ({clips.filter(c => c.type === 'audio').length})</span>
             </button>
-            <div className="w-px h-4 bg-zinc-800 mx-1" />
+            <div className="w-px h-5 bg-zinc-800 mx-1" />
             <button
               onClick={() => handleFilterTabChange('best')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold flex items-center gap-1 cursor-pointer ${filterTab === 'best' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30' : 'text-emerald-400 hover:bg-emerald-950/30'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold flex items-center gap-1.5 cursor-pointer ${filterTab === 'best' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30' : 'text-emerald-400 hover:bg-emerald-950/30'}`}
               title="Pokaż ujęcia ocenione jako Najlepsze"
             >
               ★ Najlepsze
             </button>
             <button
               onClick={() => handleFilterTabChange('duplicates')}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold flex items-center gap-1 cursor-pointer ${filterTab === 'duplicates' ? 'bg-amber-600 text-white shadow-md' : 'text-amber-400 hover:bg-amber-950/30'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold flex items-center gap-2 cursor-pointer ${filterTab === 'duplicates' ? 'bg-amber-600 text-white shadow-md' : 'text-amber-400 hover:bg-amber-950/30'}`}
               title="Pokaż serie ujęć i wykryte duble"
             >
-              <Copy className="w-3 h-3" />
+              <Copy className="w-5 h-5" />
               <span>Duplikaty</span>
             </button>
-            <div className="w-px h-4 bg-zinc-800 mx-1" />
+            <div className="w-px h-5 bg-zinc-800 mx-1" />
             <button
               onClick={() => handleFilterTabChange('unused')}
-              className={`px-2.5 py-1.5 rounded-lg whitespace-nowrap transition-all font-medium cursor-pointer ${filterTab === 'unused' ? 'bg-zinc-800 text-white font-semibold' : 'text-zinc-400 hover:text-white'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold cursor-pointer ${filterTab === 'unused' ? 'bg-zinc-800 text-white font-semibold' : 'text-zinc-400 hover:text-white'}`}
             >
               Nieużyte
             </button>
             <button
               onClick={() => handleFilterTabChange('used')}
-              className={`px-2.5 py-1.5 rounded-lg whitespace-nowrap transition-all font-medium cursor-pointer ${filterTab === 'used' ? 'bg-zinc-800 text-white font-semibold' : 'text-zinc-400 hover:text-white'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold cursor-pointer ${filterTab === 'used' ? 'bg-zinc-800 text-white font-semibold' : 'text-zinc-400 hover:text-white'}`}
             >
               Na osi
             </button>
             <button
               onClick={() => handleFilterTabChange('favorites')}
-              className={`px-2.5 py-1.5 rounded-lg whitespace-nowrap transition-all font-medium cursor-pointer ${filterTab === 'favorites' ? 'bg-indigo-600 text-white font-semibold' : 'text-zinc-400 hover:text-white'}`}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-semibold cursor-pointer ${filterTab === 'favorites' ? 'bg-indigo-600 text-white font-semibold' : 'text-zinc-400 hover:text-white'}`}
             >
               ★ Ulubione
             </button>
@@ -1172,10 +1165,10 @@ export function MediaManager({
         </div>
 
         {/* Row 2: View Switcher, Category, Proxy, Sort, and Action buttons */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-800/80">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 pt-2 border-t border-zinc-800/80">
+          <div className="flex flex-wrap items-center gap-3">
             {/* View Mode Switcher: Grid, List, Compact */}
-            <div className="flex items-center bg-zinc-900 border border-zinc-800 p-0.5 rounded-xl text-xs shrink-0">
+            <div className="flex items-center bg-zinc-900 border border-zinc-800 p-1 rounded-xl text-xs shrink-0 gap-1">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
@@ -1183,7 +1176,7 @@ export function MediaManager({
                 }`}
                 title="Widok Siatka (standardowy)"
               >
-                <LayoutGrid className="w-3.5 h-3.5" />
+                <LayoutGrid className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
@@ -1192,7 +1185,7 @@ export function MediaManager({
                 }`}
                 title="Widok Lista (profesjonalny stół montażowy)"
               >
-                <List className="w-3.5 h-3.5" />
+                <List className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setViewMode('compact')}
@@ -1201,16 +1194,16 @@ export function MediaManager({
                 }`}
                 title="Widok Kompaktowy (dla 50-100+ ujęć)"
               >
-                <Square className="w-3.5 h-3.5" />
+                <Square className="w-5 h-5" />
               </button>
             </div>
 
             {/* Proxy Filter */}
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
               <select
                 value={proxyFilter}
                 onChange={(e) => setProxyFilter(e.target.value as any)}
-                className="bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 cursor-pointer font-mono"
+                className="bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500 cursor-pointer font-sans font-semibold"
               >
                 <option value="all">Wszystkie stany proxy</option>
                 <option value="ready">⚡ Tylko gotowe Proxy</option>
@@ -1219,12 +1212,12 @@ export function MediaManager({
             </div>
 
             {/* Category Filter */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              <Filter className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+            <div className="flex items-center gap-2 shrink-0">
+              <Filter className="w-5 h-5 text-zinc-400 shrink-0" />
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                className="bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500 cursor-pointer font-sans font-semibold"
               >
                 <option value="all">Wszystkie kategorie / akty</option>
                 <option value="opening">I. Wstęp / Prolog</option>
@@ -1559,24 +1552,15 @@ export function MediaManager({
           <div className="min-h-[300px] border border-dashed border-zinc-800/80 rounded-3xl flex flex-col items-center justify-center text-center p-8 bg-zinc-950/60 relative overflow-hidden">
             {clips.length === 0 ? (
               <div className="flex flex-col items-center max-w-md space-y-4">
-                <div className="relative group">
-                  <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl overflow-hidden border-2 border-indigo-500/40 shadow-2xl shadow-indigo-500/20 transform transition-transform group-hover:scale-105">
-                    <img 
-                      src={capybaraForkliftImg} 
-                      alt="Kapibara na wózku widłowym - Operator Kapi-Studio" 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <span className="absolute -bottom-2 -right-2 px-2.5 py-0.5 rounded-full bg-amber-500 text-black font-extrabold text-[10px] uppercase tracking-wider shadow-md">
-                    Operator Kapi
-                  </span>
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-[#18181b] border border-[#27272a] shadow-2xl flex items-center justify-center text-[#00e5cc]">
+                  <UploadCloud className="w-10 h-10 text-[#00e5cc]" />
                 </div>
                 <div>
                   <h4 className="text-white font-bold text-base sm:text-lg tracking-tight">
-                    Gotowy do załadunku ujęć 4K!
+                    Importuj Ujęcia i Pliki Wideo
                   </h4>
                   <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">
-                    Kapibara na wózku widłowym czeka na Twoje filmy i zdjęcia. Przeciągnij pliki z komputera lub połącz Dysk Google powyżej.
+                    Przeciągnij pliki wideo, audio lub zdjęcia bezpośrednio z komputera albo importuj z Dysku Google.
                   </p>
                 </div>
                 <div className="flex items-center gap-2.5 pt-2">

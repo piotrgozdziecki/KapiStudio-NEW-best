@@ -22,14 +22,15 @@ export default defineConfig(() => {
         injectRegister: 'script',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
         manifest: {
-          name: 'Kapi-Studio - Profesjonalny Edytor Wideo',
+          id: '/',
+          name: 'Kapi-Studio By Piotr new',
           short_name: 'Kapi-Studio',
           description: 'Zaawansowane studio montażu i postprodukcji wideo z automatycznymi narzędziami reżyserskimi.',
           theme_color: '#090a0f',
           background_color: '#090a0f',
           display: 'standalone',
           orientation: 'portrait',
-          start_url: '.',
+          start_url: '/',
           scope: '/',
           icons: [
             {

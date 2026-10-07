@@ -220,18 +220,18 @@ export function QuickActionsBar({
   return (
     <>
       {/* Action buttons bar */}
-      <div className="flex items-center gap-2 p-2 bg-zinc-950/90 border border-zinc-800/80 rounded-2xl shadow-xl text-xs backdrop-blur-xl overflow-x-auto custom-scrollbar touch-pan-x w-full max-w-full">
+      <div className="flex items-center gap-3 p-2 bg-zinc-950/90 border border-zinc-800/80 rounded-2xl shadow-xl text-xs backdrop-blur-xl overflow-x-auto custom-scrollbar touch-pan-x w-full max-w-full">
         {/* 0. MASTER PRODUCE BUTTON */}
         <button
           onClick={onMagicProduce || onOpenChronologicalModal}
           disabled={isRunning}
-          className="group relative flex items-center gap-2 px-5 py-2.5 rounded-xl btn-primary text-white cursor-pointer transition-all font-bold disabled:opacity-50 shadow-lg shadow-indigo-600/30 shrink-0 overflow-hidden"
+          className="group relative flex items-center gap-3 px-5 py-2.5 rounded-xl btn-primary text-white cursor-pointer transition-all font-bold disabled:opacity-50 shadow-lg shadow-indigo-600/30 shrink-0 overflow-hidden font-sans"
           title="PRODUKCJA MISTRZOWSKA: Automatyczny montaż, kolejność i przejścia w 1 kliknięciu"
         >
-          <Sparkles className="w-4 h-4 text-white animate-pulse" />
+          <Sparkles className="w-5 h-5 text-white animate-pulse" />
           <span className="tracking-tight uppercase">PRODUKCJA MISTRZOWSKA (1-Klik)</span>
-          <div className="flex items-center justify-center w-5 h-5 rounded-full bg-white/20 text-[10px]">
-            <Zap className="w-3 h-3 fill-white" />
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs">
+            <Zap className="w-4 h-4 fill-white" />
           </div>
         </button>
 
@@ -240,10 +240,10 @@ export function QuickActionsBar({
           <button
             onClick={onOpenQuickMerge}
             disabled={isRunning}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-200 hover:text-white cursor-pointer transition-all font-semibold shrink-0"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-200 hover:text-white cursor-pointer transition-all font-semibold font-sans shrink-0"
             title="Szybkie scalanie wybranych klipów z czołówką i napisami końcowymi"
           >
-            <Zap className="w-3.5 h-3.5 text-indigo-400" />
+            <Zap className="w-5 h-5 text-indigo-400" />
             <span>Szybkie Scalanie</span>
           </button>
         )}
@@ -253,10 +253,10 @@ export function QuickActionsBar({
           <button
             onClick={onOpenBeatSyncModal}
             disabled={isRunning}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-950/60 hover:bg-indigo-900/70 border border-indigo-500/40 text-indigo-200 hover:text-white cursor-pointer transition-all font-bold shrink-0 shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-950/60 hover:bg-indigo-900/70 border border-indigo-500/40 text-indigo-200 hover:text-white cursor-pointer transition-all font-bold font-sans shrink-0 shadow-sm"
             title="Wykryj bity w muzyce i automatycznie dopasuj cięcia ujęć do tempa BPM"
           >
-            <Activity className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+            <Activity className="w-5 h-5 text-indigo-400 animate-pulse" />
             <span>Beat-Sync (Rytm Muzyki)</span>
           </button>
         )}
@@ -266,10 +266,10 @@ export function QuickActionsBar({
           <button
             onClick={onOpenAutoCaptionsModal}
             disabled={isRunning}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-950/60 hover:bg-purple-900/70 border border-purple-500/40 text-purple-200 hover:text-white cursor-pointer transition-all font-semibold shrink-0"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/70 border border-purple-500/40 text-purple-200 hover:text-white cursor-pointer transition-all font-semibold font-sans shrink-0"
             title="Automatyczne generowanie napisów, transkrypcja mowy na żywo i napisy viral karaoke"
           >
-            <Type className="w-3.5 h-3.5 text-purple-400" />
+            <Type className="w-5 h-5 text-purple-400" />
             <span>Napisy & Auto-Captions</span>
           </button>
         )}
@@ -279,10 +279,10 @@ export function QuickActionsBar({
           <button
             onClick={onOpenTitleCardModal}
             disabled={isRunning}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-300 hover:text-white cursor-pointer transition-all font-medium shrink-0"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-300 hover:text-white cursor-pointer transition-all font-semibold font-sans shrink-0"
             title="Dodaj lub edytuj kartę czołówki (Intro) lub napisów końcowych (Outro)"
           >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+            <Sparkles className="w-5 h-5 text-indigo-400" />
             <span>Karty Intro / Outro</span>
           </button>
         )}
@@ -291,10 +291,10 @@ export function QuickActionsBar({
         <button
           onClick={handleAnalyzeProject}
           disabled={isRunning}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-300 hover:text-white cursor-pointer transition-all font-medium disabled:opacity-50 shrink-0"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-300 hover:text-white cursor-pointer transition-all font-semibold font-sans disabled:opacity-50 shrink-0"
           title="Audyt techniczny: ostrość, stabilność i oświetlenie ujęć"
         >
-          <RotateCw className={`w-3.5 h-3.5 ${isRunning && activeActionName.includes('Analiza') ? 'animate-spin text-indigo-400' : ''}`} />
+          <RotateCw className={`w-5 h-5 ${isRunning && activeActionName.includes('Analiza') ? 'animate-spin text-indigo-400' : ''}`} />
           <span>Analiza Jakości</span>
         </button>
 
@@ -303,10 +303,10 @@ export function QuickActionsBar({
           <button
             onClick={onOpenProjectNarrativeModal}
             disabled={isRunning}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-300 hover:text-white cursor-pointer transition-all font-medium shrink-0"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-300 hover:text-white cursor-pointer transition-all font-semibold font-sans shrink-0"
             title="Generuj scenariusz, akty filmu i plansze rozdziałów"
           >
-            <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" />
+            <SlidersHorizontal className="w-5 h-5 text-indigo-400" />
             <span>Scenariusz & Akty</span>
           </button>
         )}
@@ -315,10 +315,10 @@ export function QuickActionsBar({
         <button
           onClick={handleOptimizeProject}
           disabled={isRunning}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-300 hover:text-cyan-300 cursor-pointer transition-all font-medium disabled:opacity-50 shrink-0"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-300 hover:text-cyan-300 cursor-pointer transition-all font-semibold font-sans disabled:opacity-50 shrink-0"
           title="Generuj lekkie proxy 540p dla płynnego montażu bez zacięć"
         >
-          <Zap className="w-3.5 h-3.5 text-cyan-400" />
+          <Zap className="w-5 h-5 text-cyan-400" />
           <span>Optymalizacja Proxy</span>
         </button>
 
@@ -327,10 +327,10 @@ export function QuickActionsBar({
           <button
             onClick={onOpenTemplateGallery}
             disabled={isRunning}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-indigo-300 hover:text-white cursor-pointer transition-all font-semibold shadow-sm shrink-0"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-indigo-300 hover:text-white cursor-pointer transition-all font-semibold font-sans shadow-sm shrink-0"
             title="Otwórz Galerię Szablonów (Zapisuj i wczytuj struktury z Firebase)"
           >
-            <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" />
+            <SlidersHorizontal className="w-5 h-5 text-indigo-400" />
             <span>Szablony Montażowe</span>
           </button>
         )}
@@ -342,10 +342,10 @@ export function QuickActionsBar({
         <button
           onClick={handlePrepareForExport}
           disabled={isRunning}
-          className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer transition-all font-bold disabled:opacity-50 shadow-md shadow-emerald-600/30 shrink-0"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer transition-all font-bold font-sans disabled:opacity-50 shadow-md shadow-emerald-600/30 shrink-0"
           title="Przejdź do renderowania i zapisu filmu"
         >
-          <CheckCircle2 className="w-4 h-4 text-white" />
+          <CheckCircle2 className="w-5 h-5 text-white" />
           <span>Finalny Eksport</span>
         </button>
       </div>

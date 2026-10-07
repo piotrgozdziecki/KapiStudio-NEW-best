@@ -1,5 +1,6 @@
 {
-  "name": "Kapi-Studio • Profesjonalny Edytor Wideo AI",
+  "id": "/",
+  "name": "Kapi-Studio By Piotr new",
   "short_name": "Kapi-Studio",
   "description": "Profesjonalny edytor i studio postprodukcji wideo nowej generacji z akceleracją GPU 4K i integracją z Google Drive.",
   "start_url": "/",
